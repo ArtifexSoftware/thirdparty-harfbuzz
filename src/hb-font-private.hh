@@ -288,7 +288,7 @@ struct hb_font_t {
     if (likely (HB_DIRECTION_IS_HORIZONTAL (direction))) {
       if (!get_font_h_extents (extents))
       {
-	extents->ascender = y_scale * .8;
+	extents->ascender = (hb_position_t)(y_scale * .8);
 	extents->descender = y_scale - extents->ascender;
 	extents->line_gap = 0;
       }
