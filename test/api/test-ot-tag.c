@@ -198,7 +198,10 @@ test_ot_tag_language (void)
   test_tag_from_language ("ZHS", "zh"); /* Chinese */
   test_tag_from_language ("ZHS", "zh-cn"); /* Chinese (China) */
   test_tag_from_language ("ZHS", "zh-sg"); /* Chinese (Singapore) */
-  test_tag_from_language ("ZHT", "zh-mo"); /* Chinese (Macao) */
+  test_tag_from_language ("ZHH", "zh-mo"); /* Chinese (Macao) */
+  test_tag_from_language ("ZHH", "zh-hant-mo"); /* Chinese (Macao) */
+  test_tag_from_language ("ZHH", "zh-hk"); /* Chinese (Hong Kong) */
+  test_tag_from_language ("ZHH", "zH-HanT-hK"); /* Chinese (Hong Kong) */
   test_tag_from_language ("ZHT", "zh-tw"); /* Chinese (Taiwan) */
   test_tag_from_language ("ZHS", "zh-Hans"); /* Chinese (Simplified) */
   test_tag_from_language ("ZHT", "zh-Hant"); /* Chinese (Traditional) */
@@ -228,6 +231,12 @@ test_ot_tag_language (void)
   test_tag_from_language ("IPPH", "und-fonipa");
   test_tag_from_language ("IPPH", "zh-fonipa");
   test_tag_to_language ("IPPH", "und-fonipa");
+
+  /* North American Phonetic Alphabet (Americanist Phonetic Notation) */
+  test_tag_from_language ("APPH", "en-fonnapa");
+  test_tag_from_language ("APPH", "chr-fonnapa");
+  test_tag_from_language ("APPH", "und-fonnapa");
+  test_tag_to_language ("APPH", "und-fonnapa");
 
   /* Test that x-hbot overrides the base language */
   test_tag_from_language ("ABC", "fa-x-hbotabc-zxc");

@@ -39,9 +39,14 @@ hb_fuzzer_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	-DMAIN \
 	$(NULL)
+hb_fuzzer_DEPENDENCIES = \
+	lib \
+	$(NULL)
 
 check:
-	cat $(top_srcdir)/test/shaping/tests/fuzzed.tests | \
-	cut -d: -f1 | xargs ./hb-fuzzer
+	cat $(srcdir)/../shaping/tests/fuzzed.tests | \
+	cut -d: -f1 | while read x; do \
+		./hb-fuzzer $(srcdir)/../shaping/$$x; \
+	done
 
 -include $(top_srcdir)/git.mk
