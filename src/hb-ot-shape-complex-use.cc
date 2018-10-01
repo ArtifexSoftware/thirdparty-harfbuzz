@@ -162,11 +162,38 @@ collect_features_use (hb_ot_shape_planner_t *plan)
     map->enable_feature (positioning_features[i]);
 }
 
+struct would_substitute_feature_t
+{
+  inline void init (const hb_ot_map_t *map, hb_tag_t feature_tag, bool zero_context_)
+  {
+    zero_context = zero_context_;
+    map->get_stage_lookups (0/*GSUB*/,
+			    map->get_feature_stage (0/*GSUB*/, feature_tag),
+			    &lookups, &count);
+  }
+
+  inline bool would_substitute (const hb_codepoint_t *glyphs,
+				unsigned int          glyphs_count,
+				hb_face_t            *face) const
+  {
+    for (unsigned int i = 0; i < count; i++)
+      if (hb_ot_layout_lookup_would_substitute_fast (face, lookups[i].index, glyphs, glyphs_count, zero_context))
+	return true;
+    return false;
+  }
+
+  private:
+  const hb_ot_map_t::lookup_map_t *lookups;
+  unsigned int count;
+  bool zero_context;
+};
+
 struct use_shape_plan_t
 {
   ASSERT_POD ();
 
   hb_mask_t rphf_mask;
+  would_substitute_feature_t pstf; /* Needed for Sinhala decompositions. Meh. */
 
   arabic_shape_plan_t *arabic_plan;
 };
@@ -213,6 +240,8 @@ data_create_use (const hb_ot_shape_plan_t *plan)
     return nullptr;
 
   use_plan->rphf_mask = plan->map.get_1_mask (HB_TAG('r','p','h','f'));
+
+  use_plan->pstf.init (&plan->map, HB_TAG('p','s','t','f'), true);
 
   if (has_arabic_joining (plan->props.script))
   {
@@ -572,6 +601,58 @@ reorder (const hb_ot_shape_plan_t *plan,
 }
 
 static bool
+decompose_use (const hb_ot_shape_normalize_context_t *c,
+	       hb_codepoint_t  ab,
+	       hb_codepoint_t *a,
+	       hb_codepoint_t *b)
+{
+  if ((ab == 0x0DDAu || hb_in_range<hb_codepoint_t> (ab, 0x0DDCu, 0x0DDEu)))
+  {
+    /*
+     * Sinhala split matras...  Let the fun begin.
+     *
+     * These four characters have Unicode decompositions.  However, Uniscribe
+     * decomposes them "Khmer-style", that is, it uses the character itself to
+     * get the second half.  The first half of all four decompositions is always
+     * U+0DD9.
+     *
+     * Now, there are buggy fonts, namely, the widely used lklug.ttf, that are
+     * broken with Uniscribe.  But we need to support them.  As such, we only
+     * do the Uniscribe-style decomposition if the character is transformed into
+     * its "sec.half" form by the 'pstf' feature.  Otherwise, we fall back to
+     * Unicode decomposition.
+     *
+     * Note that we can't unconditionally use Unicode decomposition.  That would
+     * break some other fonts, that are designed to work with Uniscribe, and
+     * don't have positioning features for the Unicode-style decomposition.
+     *
+     * Argh...
+     *
+     * The Uniscribe behavior is now documented in the newly published Sinhala
+     * spec in 2012:
+     *
+     *   https://docs.microsoft.com/en-us/typography/script-development/sinhala#shaping
+     */
+
+    const use_shape_plan_t *use_plan = (const use_shape_plan_t *) c->plan->data;
+
+    hb_codepoint_t glyph;
+
+    if (hb_options ().uniscribe_bug_compatible ||
+	(c->font->get_nominal_glyph (ab, &glyph) &&
+	 use_plan->pstf.would_substitute (&glyph, 1, c->font->face)))
+    {
+      /* Ok, safe to use Uniscribe-style decomposition. */
+      *a = 0x0DD9u;
+      *b = ab;
+      return true;
+    }
+  }
+
+  return (bool) c->unicode->decompose (ab, a, b);
+}
+
+static bool
 compose_use (const hb_ot_shape_normalize_context_t *c,
 	     hb_codepoint_t  a,
 	     hb_codepoint_t  b,
@@ -594,7 +675,7 @@ const hb_ot_complex_shaper_t _hb_ot_complex_shaper_use =
   nullptr, /* preprocess_text */
   nullptr, /* postprocess_glyphs */
   HB_OT_SHAPE_NORMALIZATION_MODE_COMPOSED_DIACRITICS_NO_SHORT_CIRCUIT,
-  nullptr, /* decompose */
+  decompose_use,
   compose_use,
   setup_masks_use,
   nullptr, /* disable_otl */
