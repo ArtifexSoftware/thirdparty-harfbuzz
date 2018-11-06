@@ -910,7 +910,7 @@ hb_ot_position (const hb_ot_shape_context_t *c)
   hb_ot_position_complex (c);
 
   if (c->plan->fallback_mark_positioning && c->plan->shaper->fallback_position)
-    _hb_ot_shape_fallback_mark_position (c->plan, c->font, c->buffer);
+    ;//_hb_ot_shape_fallback_mark_position (c->plan, c->font, c->buffer);
 
   if (HB_DIRECTION_IS_BACKWARD (c->buffer->props.direction))
     hb_buffer_reverse (c->buffer);
