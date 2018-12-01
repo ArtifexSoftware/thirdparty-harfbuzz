@@ -90,6 +90,9 @@ struct hb_vector_t
       return Null(Type);
     return arrayZ()[i];
   }
+  /* Catch int index and deflect to unsigned int. */
+  inline Type& operator [] (int i) { return (*this)[(unsigned int) i]; }
+  inline const Type& operator [] (int i) const { return (*this)[(unsigned int) i]; }
 
   inline hb_array_t<Type> as_array (void)
   { return hb_array (arrayZ(), len); }
