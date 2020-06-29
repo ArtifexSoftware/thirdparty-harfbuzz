@@ -126,7 +126,7 @@ typedef HBUINT16 UFWORD;
 /* 16-bit signed fixed number with the low 14 bits of fraction (2.14). */
 struct F2DOT14 : HBINT16
 {
-  F2DOT14& operator = (uint16_t i ) { HBINT16::operator= (i); return *this; }
+  F2DOT14& operator = (uint16_t i) { HBINT16::operator= (i); return *this; }
   // 16384 means 1<<14
   float to_float () const  { return ((int32_t) v) / 16384.f; }
   void set_float (float f) { v = roundf (f * 16384.f); }
