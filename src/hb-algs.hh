@@ -83,24 +83,27 @@ static inline constexpr uint16_t hb_uint16_swap (uint16_t v)
 static inline constexpr uint32_t hb_uint32_swap (uint32_t v)
 { return (hb_uint16_swap (v) << 16) | hb_uint16_swap (v >> 16); }
 
-template <typename Type, int Bytes = sizeof (Type)> struct BEInt;
-template <typename Type>
-struct BEInt<Type, 1>
+template <typename Type,
+	  int Bytes = sizeof (Type),
+	  typename Wide = hb_conditional<hb_is_signed (Type), signed, unsigned>>
+struct BEInt;
+template <typename Type, typename Wide>
+struct BEInt<Type, 1, Wide>
 {
   public:
   BEInt () = default;
   constexpr BEInt (Type V) : v {V} {}
-  constexpr operator Type () const { return v; }
+  constexpr operator Wide () const { return v; }
   private: uint8_t v;
 };
-template <typename Type>
-struct BEInt<Type, 2>
+template <typename Type, typename Wide>
+struct BEInt<Type, 2, Wide>
 {
   public:
   BEInt () = default;
   constexpr BEInt (Type V) : v {(V >>  8) & 0xFF,
 			        (V      ) & 0xFF} {}
-  constexpr operator Type () const
+  constexpr operator Wide () const
   {
 #if ((defined(__GNUC__) && __GNUC__ >= 5) || defined(__clang__)) && \
     defined(__BYTE_ORDER) && \
@@ -119,21 +122,21 @@ struct BEInt<Type, 2>
   }
   private: uint8_t v[2];
 };
-template <typename Type>
-struct BEInt<Type, 3>
+template <typename Type, typename Wide>
+struct BEInt<Type, 3, Wide>
 {
   public:
   BEInt () = default;
   constexpr BEInt (Type V) : v {(V >> 16) & 0xFF,
 			        (V >>  8) & 0xFF,
 			        (V      ) & 0xFF} {}
-  constexpr operator Type () const { return (v[0] << 16)
-					     + (v[1] <<  8)
-					     + (v[2]      ); }
+  constexpr operator Wide () const { return (v[0] << 16)
+					  + (v[1] <<  8)
+					  + (v[2]      ); }
   private: uint8_t v[3];
 };
-template <typename Type>
-struct BEInt<Type, 4>
+template <typename Type, typename Wide>
+struct BEInt<Type, 4, Wide>
 {
   public:
   BEInt () = default;
@@ -141,7 +144,7 @@ struct BEInt<Type, 4>
 			        (V >> 16) & 0xFF,
 			        (V >>  8) & 0xFF,
 			        (V      ) & 0xFF} {}
-  constexpr operator Type () const { return (v[0] << 24)
+  constexpr operator Wide () const { return (v[0] << 24)
 					  + (v[1] << 16)
 					  + (v[2] <<  8)
 					  + (v[3]      ); }

@@ -53,14 +53,18 @@ namespace OT {
  */
 
 /* Integer types in big-endian order and no alignment requirement */
-template <typename Type, unsigned int Size = sizeof (Type)>
+template <typename Type,
+	  unsigned int Size = sizeof (Type),
+	  typename Wide = hb_conditional<hb_is_signed (Type), signed, unsigned>>
 struct IntType
 {
   typedef Type type;
-  typedef hb_conditional<hb_is_signed (Type), signed, unsigned> wide_type;
 
-  IntType& operator = (wide_type i) { v = i; return *this; }
-  operator wide_type () const { return v; }
+  explicit IntType () = default;
+  explicit constexpr IntType (Wide V) : v {V} {}
+  IntType& operator = (Wide i) { v = i; return *this; }
+  operator Wide () const { return v; }
+
   bool operator == (const IntType &o) const { return (Type) v == (Type) o.v; }
   bool operator != (const IntType &o) const { return !(*this == o); }
 
@@ -95,7 +99,7 @@ struct IntType
     return_trace (likely (c->check_struct (this)));
   }
   protected:
-  BEInt<Type, Size> v;
+  BEInt<Type, Size, Wide> v;
   public:
   DEFINE_SIZE_STATIC (Size);
 };
@@ -163,8 +167,8 @@ struct Tag : HBUINT32
 {
   Tag& operator = (hb_tag_t i) { HBUINT32::operator= (i); return *this; }
   /* What the char* converters return is NOT nul-terminated.  Print using "%.4s" */
-  operator const char* () const { return reinterpret_cast<const char *> (&this->v); }
-  operator char* ()             { return reinterpret_cast<char *> (&this->v); }
+  operator const char* () const { return reinterpret_cast<const char *> (this); }
+  operator char* ()             { return reinterpret_cast<char *> (this); }
   public:
   DEFINE_SIZE_STATIC (4);
 };
