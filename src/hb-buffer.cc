@@ -282,21 +282,12 @@ hb_buffer_t::add_info (const hb_glyph_info_t &glyph_info)
 
 
 void
-hb_buffer_t::remove_output ()
-{
-  have_output = false;
-  have_positions = false;
-
-  out_len = 0;
-  out_info = info;
-}
-
-void
 hb_buffer_t::clear_output ()
 {
   have_output = true;
   have_positions = false;
 
+  idx = 0;
   out_len = 0;
   out_info = info;
 }
@@ -316,16 +307,16 @@ hb_buffer_t::clear_positions ()
 void
 hb_buffer_t::swap_buffers ()
 {
-  if (unlikely (!successful)) return;
+  assert (have_output);
 
   assert (idx <= len);
-  if (unlikely (!next_glyphs (len - idx))) return;
 
-  assert (have_output);
-  have_output = false;
+  if (unlikely (!successful || !next_glyphs (len - idx)))
+    goto reset;
 
   if (out_info != info)
   {
+    // TODO: Use std::swap
     hb_glyph_info_t *tmp;
     tmp = info;
     info = out_info;
@@ -333,12 +324,11 @@ hb_buffer_t::swap_buffers ()
 
     pos = (hb_glyph_position_t *) out_info;
   }
-
-  unsigned int tmp;
-  tmp = len;
   len = out_len;
-  out_len = tmp;
 
+reset:
+  have_output = false;
+  out_len = 0;
   idx = 0;
 }
 
