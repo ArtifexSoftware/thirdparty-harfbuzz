@@ -1,3 +1,14 @@
+Overview of changes leading to 2.9.0
+Friday, August 13, 2021
+====================================
+- Subsetter API is being stabilized, with the first stable API to happen in
+  3.0.0 release (https://github.com/harfbuzz/harfbuzz/issues/3078).
+- Support multiple variation axes with same tag, aka HOI.
+- The “coretext” testing shaper now passes font variations to CoreText.
+- hb-shape/hb-view does not break line at new lines unless text is read from
+  file.
+- Various bug fixes.
+
 Overview of changes leading to 2.8.2
 Tuesday, July 8, 2021
 ====================================
