@@ -280,19 +280,15 @@ def is_HIEROGLYPH_SEGMENT_END(U, UISC, UGC, AJT):
 def is_ZWNJ(U, UISC, UGC, AJT):
 	return UISC == Non_Joiner
 def is_OTHER(U, UISC, UGC, AJT):
-	return ((UGC in [Cn, Po] or UISC in [Consonant_Dead, Joiner, Modifying_Letter, Other])
+	return ((UGC in [Cn, Po, Sc, So] or UISC in [Consonant_Dead, Joiner, Modifying_Letter, Other])
 		and not is_BASE(U, UISC, UGC, AJT)
 		and not is_BASE_OTHER(U, UISC, UGC, AJT)
-		and not is_SYM(U, UISC, UGC, AJT)
 		and not is_SYM_MOD(U, UISC, UGC, AJT)
 	)
 def is_REPHA(U, UISC, UGC, AJT):
 	return UISC in [Consonant_Preceding_Repha, Consonant_Prefixed]
 def is_SAKOT(U, UISC, UGC, AJT):
 	return U == 0x1A60
-def is_SYM(U, UISC, UGC, AJT):
-	if U in [0x25CC, 0x1E14F]: return False
-	return UGC in [So, Sc] and U not in [0x0F01, 0x1B62, 0x1B68]
 def is_SYM_MOD(U, UISC, UGC, AJT):
 	return U in [0x1B6B, 0x1B6C, 0x1B6D, 0x1B6E, 0x1B6F, 0x1B70, 0x1B71, 0x1B72, 0x1B73]
 def is_VOWEL(U, UISC, UGC, AJT):
@@ -325,7 +321,6 @@ use_mapping = {
 	'ZWNJ':	is_ZWNJ,
 	'O':	is_OTHER,
 	'R':	is_REPHA,
-	'S':	is_SYM,
 	'Sk':	is_SAKOT,
 	'SM':	is_SYM_MOD,
 	'V':	is_VOWEL,
