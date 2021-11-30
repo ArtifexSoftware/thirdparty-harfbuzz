@@ -49,4 +49,4 @@ jobs:
           meson compile -C build
       - name: Test
         run: |
-          meson test --print-errorlogs --suite=harfbuzz -C build
+          util\hb-shape.exe test\shape\data\in-house\fonts\872d2955d326bd6676a06f66b8238ebbaabc212f.ttf --font-funcs=ft --verify --unicodes U+0628,U+0628,U+0628 --shaper=directwrite
