@@ -211,8 +211,17 @@ struct machine_index_t :
   void __prev__ () { --it; }
   void __rewind__ (unsigned n) { it -= n; }
   void operator = (unsigned n)
-  { unsigned index = (*it).first; if (index < n) it += n - index; else if (index > n) it -= index - n; }
-  void operator = (const machine_index_t& o) { *this = (*o.it).first; }
+  {
+    /* Setting to null; just ignore. Doesn't rely on it.
+     * https://github.com/harfbuzz/harfbuzz/issues/3502 */
+    assert (n == 0);
+  }
+  void operator = (const machine_index_t& o)
+  {
+    unsigned index = (*it).first;
+    unsigned n = (*o.it).first;
+    if (index < n) it += n - index; else if (index > n) it -= index - n;
+  }
   bool operator == (const machine_index_t& o) const { return (*it).first == (*o.it).first; }
   bool operator != (const machine_index_t& o) const { return !(*this == o); }
 

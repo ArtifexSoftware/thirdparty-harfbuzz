@@ -633,8 +633,17 @@ struct machine_index_t :
   void __prev__ () { --it; }
   void __rewind__ (unsigned n) { it -= n; }
   void operator = (unsigned n)
-  { unsigned index = (*it).first; if (index < n) it += n - index; else if (index > n) it -= index - n; }
-  void operator = (const machine_index_t& o) { *this = (*o.it).first; }
+  {
+    /* Setting to null; just ignore. Doesn't rely on it.
+     * https://github.com/harfbuzz/harfbuzz/issues/3502 */
+    assert (n == 0);
+  }
+  void operator = (const machine_index_t& o)
+  {
+    unsigned index = (*it).first;
+    unsigned n = (*o.it).first;
+    if (index < n) it += n - index; else if (index > n) it -= index - n;
+  }
   bool operator == (const machine_index_t& o) const { return (*it).first == (*o.it).first; }
   bool operator != (const machine_index_t& o) const { return !(*this == o); }
 
@@ -684,7 +693,7 @@ find_syllables_use (hb_buffer_t *buffer)
   unsigned int act HB_UNUSED;
   int cs;
   
-#line 688 "hb-ot-shape-complex-use-machine.hh"
+#line 697 "hb-ot-shape-complex-use-machine.hh"
 	{
 	cs = use_syllable_machine_start;
 	ts = 0;
@@ -692,12 +701,12 @@ find_syllables_use (hb_buffer_t *buffer)
 	act = 0;
 	}
 
-#line 267 "hb-ot-shape-complex-use-machine.rl"
+#line 276 "hb-ot-shape-complex-use-machine.rl"
 
 
   unsigned int syllable_serial = 1;
   
-#line 701 "hb-ot-shape-complex-use-machine.hh"
+#line 710 "hb-ot-shape-complex-use-machine.hh"
 	{
 	int _slen;
 	int _trans;
@@ -711,7 +720,7 @@ _resume:
 #line 1 "NONE"
 	{ts = p;}
 	break;
-#line 715 "hb-ot-shape-complex-use-machine.hh"
+#line 724 "hb-ot-shape-complex-use-machine.hh"
 	}
 
 	_keys = _use_syllable_machine_trans_keys + (cs<<1);
@@ -801,7 +810,7 @@ _eof_trans:
 #line 170 "hb-ot-shape-complex-use-machine.rl"
 	{act = 2;}
 	break;
-#line 805 "hb-ot-shape-complex-use-machine.hh"
+#line 814 "hb-ot-shape-complex-use-machine.hh"
 	}
 
 _again:
@@ -810,7 +819,7 @@ _again:
 #line 1 "NONE"
 	{ts = 0;}
 	break;
-#line 814 "hb-ot-shape-complex-use-machine.hh"
+#line 823 "hb-ot-shape-complex-use-machine.hh"
 	}
 
 	if ( ++p != pe )
@@ -826,7 +835,7 @@ _again:
 
 	}
 
-#line 272 "hb-ot-shape-complex-use-machine.rl"
+#line 281 "hb-ot-shape-complex-use-machine.rl"
 
 }
 
