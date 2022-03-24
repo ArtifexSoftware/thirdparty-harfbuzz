@@ -1457,15 +1457,19 @@ static inline void apply_lookup (hb_ot_apply_context_t *c,
      */
 
     end += delta;
-    if (end <= int (match_positions[idx]))
+    if (end < int (match_positions[idx]))
     {
       /* End might end up being smaller than match_positions[idx] if the recursed
-       * lookup ended up removing many items, more than we have had matched.
-       * Just never rewind end back and get out of here.
-       * https://bugs.chromium.org/p/chromium/issues/detail?id=659496 */
+       * lookup ended up removing many items.
+       * Just never rewind end beyond start of current position, since that is
+       * not possible in the recursed lookup.  Also adjust delta as such.
+       *
+       * https://bugs.chromium.org/p/chromium/issues/detail?id=659496
+       * https://github.com/harfbuzz/harfbuzz/issues/1611
+       */
+      int delta2 = match_positions[idx] - end;
+      delta += delta2;
       end = match_positions[idx];
-      /* There can't be any further changes. */
-      break;
     }
 
     unsigned int next = idx + 1; /* next now is the position after the recursed lookup. */
@@ -1495,6 +1499,12 @@ static inline void apply_lookup (hb_ot_apply_context_t *c,
     /* And fixup the rest. */
     for (; next < count; next++)
       match_positions[next] += delta;
+
+    /* Remove match positions that now point beyond the end of the buffer. */
+    while (count && match_positions[count - 1] >= new_len)
+      count--;
+    if (unlikely (!count))
+      break;
   }
 
   (void) buffer->move_to (end);
