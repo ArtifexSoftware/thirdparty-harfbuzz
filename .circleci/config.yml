@@ -3,10 +3,10 @@ version: 2.1
 executors:
   win32-executor:
     docker:
-      - image: cimg/base:edge-20.04
+      - image: archlinux:base-devel
   win64-executor:
     docker:
-      - image: cimg/base:edge-20.04
+      - image: archlinux:base-devel
   autotools-executor:
     docker:
       - image: cimg/base:edge-20.04
@@ -135,8 +135,7 @@ jobs:
     executor: win32-executor
     steps:
       - checkout
-      - run: sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install -y ninja-build gtk-doc-tools python3 python3-pip git g++-mingw-w64-i686 zip
-      - run: pip3 install meson==0.56.0 --upgrade
+      - run: pacman --noconfirm -Syu git meson mingw-w64-gcc python-pip gtk-doc
       - run: .ci/build-win32.sh
       - store_artifacts:
           path: harfbuzz-win32.zip
@@ -158,8 +157,7 @@ jobs:
     executor: win64-executor
     steps:
       - checkout
-      - run: sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install -y ninja-build gtk-doc-tools python3 python3-pip git g++-mingw-w64-x86-64 zip
-      - run: pip3 install meson==0.56.0 --upgrade
+      - run: pacman --noconfirm -Syu git meson mingw-w64-gcc python-pip gtk-doc
       - run: bash .ci/build-win64.sh
       - store_artifacts:
           path: harfbuzz-win64.zip
