@@ -87,7 +87,7 @@ _plan_estimate_subset_table_size (hb_subset_plan_t *plan, unsigned table_len)
   if (unlikely (!src_glyphs))
     return 512 + table_len;
 
-  return 512 + (unsigned) (table_len * sqrt ((double) dst_glyphs / src_glyphs));
+  return 512 + (unsigned) (table_len * sqrt (sqrt ((double) dst_glyphs / src_glyphs)));
 }
 
 /*
