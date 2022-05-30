@@ -2771,44 +2771,86 @@ struct VarData
     if (unlikely (!c->extend_min (this))) return_trace (false);
     itemCount = inner_map.get_next_value ();
 
-    /* Optimize short count */
-    unsigned short ri_count = src->regionIndices.len;
-    enum delta_size_t { kZero=0, kByte, kShort };
+    /* Optimize word count */
+    unsigned ri_count = src->regionIndices.len;
+    enum delta_size_t { kZero=0, kNonWord, kWord };
     hb_vector_t<delta_size_t> delta_sz;
     hb_vector_t<unsigned int> ri_map;	/* maps old index to new index */
     delta_sz.resize (ri_count);
     ri_map.resize (ri_count);
-    unsigned int new_short_count = 0;
+    unsigned int new_word_count = 0;
     unsigned int r;
-    for (r = 0; r < ri_count; r++)
+
+    bool has_long = false;
+    if (src->longWords ())
     {
-      delta_sz[r] = kZero;
-      for (unsigned int i = 0; i < inner_map.get_next_value (); i++)
+      for (r = 0; r < ri_count; r++)
       {
-	unsigned int old = inner_map.backward (i);
-	int16_t delta = src->get_item_delta (old, r);
-	if (delta < -128 || 127 < delta)
+	for (unsigned int i = 0; i < inner_map.get_next_value (); i++)
 	{
-	  delta_sz[r] = kShort;
-	  new_short_count++;
-	  break;
-	}
-	else if (delta != 0)
-	  delta_sz[r] = kByte;
+	  unsigned int old = inner_map.backward (i);
+	  int32_t delta = src->get_item_delta (old, r);
+	  if (delta < -65536 || 65535 < delta)
+	  {
+	    has_long = true;
+	    break;
+	  }
+        }
       }
     }
-    unsigned int short_index = 0;
-    unsigned int byte_index = new_short_count;
+
+    if (has_long)
+    {
+      for (r = 0; r < ri_count; r++)
+      {
+	delta_sz[r] = kZero;
+	for (unsigned int i = 0; i < inner_map.get_next_value (); i++)
+	{
+	  unsigned int old = inner_map.backward (i);
+	  int32_t delta = src->get_item_delta (old, r);
+	  if (delta < -65536 || 65535 < delta)
+	  {
+	    delta_sz[r] = kWord;
+	    new_word_count++;
+	    break;
+	  }
+	  else if (delta != 0)
+	    delta_sz[r] = kNonWord;
+        }
+      }
+    }
+    else
+    {
+      for (r = 0; r < ri_count; r++)
+      {
+	delta_sz[r] = kZero;
+	for (unsigned int i = 0; i < inner_map.get_next_value (); i++)
+	{
+	  unsigned int old = inner_map.backward (i);
+	  int32_t delta = src->get_item_delta (old, r);
+	  if (delta < -128 || 127 < delta)
+	  {
+	    delta_sz[r] = kWord;
+	    new_word_count++;
+	    break;
+	  }
+	  else if (delta != 0)
+	    delta_sz[r] = kNonWord;
+        }
+      }
+    }
+
+    unsigned int word_index = 0;
+    unsigned int non_word_index = new_word_count;
     unsigned int new_ri_count = 0;
     for (r = 0; r < ri_count; r++)
       if (delta_sz[r])
       {
-	ri_map[r] = (delta_sz[r] == kShort)? short_index++ : byte_index++;
+	ri_map[r] = (delta_sz[r] == kWord)? word_index++ : non_word_index++;
 	new_ri_count++;
       }
 
-    /* XXX TODO Support serializing 32bit VarStore. */
-    wordSizeCount = new_short_count;
+    wordSizeCount = new_word_count | (has_long ? 0x8000u /* LONG_WORDS */ : 0);
 
     regionIndices.len = new_ri_count;
 
