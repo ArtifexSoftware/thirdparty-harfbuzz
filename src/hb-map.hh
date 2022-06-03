@@ -77,10 +77,10 @@ struct hb_hashmap_t
 
     template <bool v = minus_one,
 	      hb_enable_if (v == false)>
-    static V default_value () { return V(); };
+    static const V& default_value () { return Null(V); };
     template <bool v = minus_one,
 	      hb_enable_if (v == true)>
-    static V default_value () { return V(-1); };
+    static const V& default_value () { static const V minus_1 = -1; return minus_1; };
 
     void clear ()
     {
@@ -200,7 +200,7 @@ struct hb_hashmap_t
   bool set (K key, const V &value) { return set_with_hash (key, hb_hash (key), value); }
   bool set (K key, V&& value) { return set_with_hash (key, hb_hash (key), std::move (value)); }
 
-  V get (K key) const
+  const V& get (K key) const
   {
     if (unlikely (!items)) return item_t::default_value ();
     unsigned int i = bucket_for (key);
@@ -332,12 +332,12 @@ struct hb_hashmap_t
     return true;
   }
 
-  unsigned int bucket_for (K key) const
+  unsigned int bucket_for (const K &key) const
   {
     return bucket_for_hash (key, hb_hash (key));
   }
 
-  unsigned int bucket_for_hash (K key, uint32_t hash) const
+  unsigned int bucket_for_hash (const K &key, uint32_t hash) const
   {
     hash &= 0x3FFFFFFF; // We only store lower 30bit of hash
     unsigned int i = hash % prime;
