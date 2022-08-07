@@ -1,6 +1,6 @@
 project('harfbuzz', 'c', 'cpp',
   meson_version: '>= 0.55.0',
-  version: '4.2.1',
+  version: '5.1.0',
   default_options: [
     'cpp_rtti=false',       # Just to support msvc, we are passing -fno-exceptions also anyway
     'cpp_std=c++11',
@@ -21,7 +21,7 @@ pkgmod = import('pkgconfig')
 cpp = meson.get_compiler('cpp')
 null_dep = dependency('', required: false)
 
-if cpp.get_id() == 'msvc'
+if cpp.get_argument_syntax() == 'msvc'
   # Ignore several spurious warnings for things HarfBuzz does very commonly.
   # If a warning is completely useless and spammy, use '/wdXXXX' to suppress it
   # If a warning is harmless but hard to fix, use '/woXXXX' so it's shown once
@@ -118,7 +118,7 @@ if not get_option('cairo').disabled()
   cairo_ft_dep = dependency('cairo-ft', required: false)
 
   if (not cairo_dep.found() and
-      cpp.get_id() == 'msvc' and
+      cpp.get_argument_syntax() == 'msvc' and
       cpp.has_header('cairo.h'))
     cairo_dep = cpp.find_library('cairo', required: false)
     if cairo_dep.found() and cpp.has_function('cairo_ft_font_face_create_for_ft_face',
@@ -198,6 +198,7 @@ if freetype_dep.found()
     ['FT_Get_Var_Blend_Coordinates', {'deps': freetype_dep}],
     ['FT_Set_Var_Blend_Coordinates', {'deps': freetype_dep}],
     ['FT_Done_MM_Var', {'deps': freetype_dep}],
+    ['FT_Get_Transform', {'deps': freetype_dep}],
   ]
 
   if freetype_dep.type_name() == 'internal'
@@ -232,17 +233,12 @@ if host_machine.system() == 'windows' and not get_option('gdi').disabled()
 endif
 
 # DirectWrite (Windows)
-directwrite_dep = null_dep
 if host_machine.system() == 'windows' and not get_option('directwrite').disabled()
   if get_option('directwrite').enabled() and not cpp.has_header('dwrite_1.h')
     error('DirectWrite was enabled explicitly, but required header is missing.')
   endif
 
-  directwrite_dep = cpp.find_library('dwrite', required: get_option('directwrite'))
-
-  if directwrite_dep.found()
-    conf.set('HAVE_DIRECTWRITE', 1)
-  endif
+  conf.set('HAVE_DIRECTWRITE', 1)
 endif
 
 # CoreText (macOS)

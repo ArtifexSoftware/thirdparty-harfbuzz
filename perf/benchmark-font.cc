@@ -1,4 +1,5 @@
 #include "benchmark/benchmark.h"
+#include <cassert>
 #include <cstring>
 
 #ifdef HAVE_CONFIG_H
@@ -18,7 +19,7 @@ struct test_input_t
 {
   bool is_variable;
   const char *font_path;
-} tests[] =
+} default_tests[] =
 {
   {true , SUBSET_FONT_BASE_PATH "Roboto-Regular.ttf"},
   {false, SUBSET_FONT_BASE_PATH "SourceSansPro-Regular.otf"},
@@ -29,6 +30,8 @@ struct test_input_t
   {false, SUBSET_FONT_BASE_PATH "NotoSerifMyanmar-Regular.otf"},
 };
 
+static test_input_t *tests = default_tests;
+static unsigned num_tests = sizeof (default_tests) / sizeof (default_tests[0]);
 
 enum backend_t { HARFBUZZ, FREETYPE };
 
@@ -46,8 +49,8 @@ _hb_move_to (hb_draw_funcs_t *, void *, hb_draw_state_t *, float, float, void *)
 static void
 _hb_line_to (hb_draw_funcs_t *, void *, hb_draw_state_t *, float, float, void *) {}
 
-static void
-_hb_quadratic_to (hb_draw_funcs_t *, void *, hb_draw_state_t *, float, float, float, float, void *) {}
+//static void
+//_hb_quadratic_to (hb_draw_funcs_t *, void *, hb_draw_state_t *, float, float, float, float, void *) {}
 
 static void
 _hb_cubic_to (hb_draw_funcs_t *, void *, hb_draw_state_t *, float, float, float, float, float, float, void *) {}
@@ -61,7 +64,7 @@ _draw_funcs_create (void)
   hb_draw_funcs_t *draw_funcs = hb_draw_funcs_create ();
   hb_draw_funcs_set_move_to_func (draw_funcs, _hb_move_to, nullptr, nullptr);
   hb_draw_funcs_set_line_to_func (draw_funcs, _hb_line_to, nullptr, nullptr);
-  hb_draw_funcs_set_quadratic_to_func (draw_funcs, _hb_quadratic_to, nullptr, nullptr);
+  //hb_draw_funcs_set_quadratic_to_func (draw_funcs, _hb_quadratic_to, nullptr, nullptr);
   hb_draw_funcs_set_cubic_to_func (draw_funcs, _hb_cubic_to, nullptr, nullptr);
   hb_draw_funcs_set_close_path_func (draw_funcs, _hb_close_path, nullptr, nullptr);
   return draw_funcs;
@@ -180,7 +183,9 @@ static void test_backend (backend_t backend,
 {
   char name[1024] = "BM_Font/";
   strcat (name, op_name);
-  strcat (name, strrchr (test_input.font_path, '/'));
+  strcat (name, "/");
+  const char *p = strrchr (test_input.font_path, '/');
+  strcat (name, p ? p + 1 : test_input.font_path);
   strcat (name, variable ? "/var" : "");
   strcat (name, "/");
   strcat (name, backend_name);
@@ -193,8 +198,9 @@ static void test_operation (operation_t op,
 			    const char *op_name,
 			    benchmark::TimeUnit time_unit)
 {
-  for (auto& test_input : tests)
+  for (unsigned i = 0; i < num_tests; i++)
   {
+    auto& test_input = tests[i];
     for (int variable = 0; variable < int (test_input.is_variable) + 1; variable++)
     {
       bool is_var = (bool) variable;
@@ -209,6 +215,19 @@ static void test_operation (operation_t op,
 
 int main(int argc, char** argv)
 {
+  benchmark::Initialize(&argc, argv);
+
+  if (argc > 1)
+  {
+    num_tests = argc - 1;
+    tests = (test_input_t *) calloc (num_tests, sizeof (test_input_t));
+    for (unsigned i = 0; i < num_tests; i++)
+    {
+      tests[i].is_variable = true;
+      tests[i].font_path = argv[i + 1];
+    }
+  }
+
 #define TEST_OPERATION(op, time_unit) test_operation (op, #op, time_unit)
 
   TEST_OPERATION (nominal_glyphs, benchmark::kMicrosecond);
@@ -218,7 +237,9 @@ int main(int argc, char** argv)
 
 #undef TEST_OPERATION
 
-  benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
   benchmark::Shutdown();
+
+  if (tests != default_tests)
+    free (tests);
 }

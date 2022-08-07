@@ -133,7 +133,7 @@ struct post
     }
     ~accelerator_t ()
     {
-      hb_free (gids_sorted_by_name.get ());
+      hb_free (gids_sorted_by_name.get_acquire ());
       table.destroy ();
     }
 
@@ -160,7 +160,7 @@ struct post
       if (unlikely (!len)) return false;
 
     retry:
-      uint16_t *gids = gids_sorted_by_name.get ();
+      uint16_t *gids = gids_sorted_by_name.get_acquire ();
 
       if (unlikely (!gids))
       {
@@ -263,10 +263,10 @@ struct post
   bool sanitize (hb_sanitize_context_t *c) const
   {
     TRACE_SANITIZE (this);
-    return_trace (likely (c->check_struct (this) &&
-			  (version.to_int () == 0x00010000 ||
-			   (version.to_int () == 0x00020000 && v2X.sanitize (c)) ||
-			   version.to_int () == 0x00030000)));
+    return_trace (c->check_struct (this) &&
+		  (version.to_int () == 0x00010000 ||
+		   (version.to_int () == 0x00020000 && v2X.sanitize (c)) ||
+		   version.to_int () == 0x00030000));
   }
 
   public:

@@ -85,6 +85,7 @@ for filename in args:
 		extra_options = ["--shaper=ot"]
 		if glyphs_expected != '*':
 			extra_options.append("--verify")
+			extra_options.append("--unsafe-to-concat")
 
 		if comment:
 			print ('# %s "%s" --unicodes %s' % (hb_shape, fontfile, unicodes))
@@ -120,6 +121,7 @@ for filename in args:
 				passes += 1
 
 		if glyphs1.strip() != glyphs_expected and glyphs_expected != '*':
+			print ("hb-shape", fontfile, "--unicodes", unicodes, file=sys.stderr)
 			print ("Actual:   " + glyphs1, file=sys.stderr)
 			print ("Expected: " + glyphs_expected, file=sys.stderr)
 			fails += 1

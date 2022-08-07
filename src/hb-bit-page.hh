@@ -40,15 +40,22 @@ struct hb_bit_page_t
 
   bool is_empty () const
   {
-    for (unsigned int i = 0; i < len (); i++)
+    for (unsigned i = 0; i < len (); i++)
       if (v[i])
 	return false;
     return true;
   }
+  uint32_t hash () const
+  {
+    uint32_t h = 0;
+    for (unsigned i = 0; i < len (); i++)
+      h = h * 31 + hb_hash (v[i]);
+    return h;
+  }
 
   void add (hb_codepoint_t g) { elt (g) |= mask (g); }
   void del (hb_codepoint_t g) { elt (g) &= ~mask (g); }
-  void set (hb_codepoint_t g, bool v) { if (v) add (g); else del (g); }
+  void set (hb_codepoint_t g, bool value) { if (value) add (g); else del (g); }
   bool get (hb_codepoint_t g) const { return elt (g) & mask (g); }
 
   void add_range (hb_codepoint_t a, hb_codepoint_t b)

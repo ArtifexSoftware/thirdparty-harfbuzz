@@ -14,6 +14,7 @@ struct _draw_data_t
   float path_last_y;
 };
 
+#include <cstdio>
 static void
 _move_to (hb_draw_funcs_t *dfuncs, void *draw_data_,
 	  hb_draw_state_t *st,
@@ -118,7 +119,7 @@ static void misc_calls_for_gid (hb_face_t *face, hb_font_t *font, hb_set_t *set,
 
 extern "C" int LLVMFuzzerTestOneInput (const uint8_t *data, size_t size)
 {
-  alloc_state = size; /* see src/failing-alloc.c */
+  alloc_state = _fuzzing_alloc_state (data, size);
 
   hb_blob_t *blob = hb_blob_create ((const char *) data, size,
 				    HB_MEMORY_MODE_READONLY, nullptr, nullptr);
