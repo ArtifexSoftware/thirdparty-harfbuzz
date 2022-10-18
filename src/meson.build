@@ -414,33 +414,40 @@ harfbuzz_deps = [thread_dep, m_dep] + harfbuzz_extra_deps
 
 libharfbuzz_link_language = 'c'
 
+hb_config = configuration_data()
+
 if conf.get('HAVE_FREETYPE', 0) == 1
   hb_sources += hb_ft_sources
   hb_headers += hb_ft_headers
   harfbuzz_deps += [freetype_dep]
+  hb_config.set('HB_FREETYPE', 1)
 endif
 
 if conf.get('HAVE_GDI', 0) == 1
   hb_sources += hb_gdi_sources
   hb_headers += hb_gdi_headers
   harfbuzz_deps += gdi_uniscribe_deps
+  hb_config.set('HB_GDI', 1)
 endif
 
 if conf.get('HAVE_GRAPHITE2', 0) == 1
   hb_sources += hb_graphite2_sources
   hb_headers += hb_graphite2_headers
   harfbuzz_deps += [graphite2_dep, graphite_dep]
+  hb_config.set('HB_GRAPHITE', 1)
 endif
 
 if conf.get('HAVE_GLIB', 0) == 1
   hb_sources += hb_glib_sources
   hb_headers += hb_glib_headers
   harfbuzz_deps += [glib_dep]
+  hb_config.set('HB_GLIB', 1)
 endif
 
 if conf.get('HAVE_UNISCRIBE', 0) == 1
   hb_sources += hb_uniscribe_sources
   hb_headers += hb_uniscribe_headers
+  hb_config.set('HB_UNISCRIBE', 1)
 endif
 
 if conf.get('HAVE_DIRECTWRITE', 0) == 1
@@ -448,12 +455,14 @@ if conf.get('HAVE_DIRECTWRITE', 0) == 1
   hb_headers += hb_directwrite_headers
   # hb-directwrite needs a C++ linker
   libharfbuzz_link_language = 'cpp'
+  hb_config.set('HB_DIRECTWRITE', 1)
 endif
 
 if conf.get('HAVE_CORETEXT', 0) == 1
   hb_sources += hb_coretext_sources
   hb_headers += hb_coretext_headers
   harfbuzz_deps += coretext_deps
+  hb_config.set('HB_CORETEXT', 1)
 endif
 
 have_icu = conf.get('HAVE_ICU', 0) == 1
@@ -463,7 +472,16 @@ if have_icu and have_icu_builtin
   hb_sources += hb_icu_sources
   hb_headers += hb_icu_headers
   harfbuzz_deps += [icu_dep]
+  hb_config.set('HB_ICU', 1)
 endif
+
+hb_config_h = configure_file(input: 'hb-config.h.in',
+                             output: 'hb-config.h',
+                             configuration: hb_config,
+                             install: true,
+                             install_dir: get_option('includedir') / meson.project_name())
+
+# Base and default-included sources and headers
 
 # harfbuzz
 gen_def = find_program('gen-def.py')
