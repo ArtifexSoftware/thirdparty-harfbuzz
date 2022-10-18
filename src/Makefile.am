@@ -47,6 +47,9 @@ HBLIBS   += $(GLIB_LIBS)
 HBDEPS   += $(GLIB_DEPS)
 HBSOURCES += $(HB_GLIB_sources)
 HBHEADERS += $(HB_GLIB_headers)
+HB_GLIB_DEF = define HB_GLIB 1
+else
+HB_GLIB_DEF = undef HB_GLIB
 endif
 
 if HAVE_FREETYPE
@@ -55,6 +58,9 @@ HBLIBS   += $(FREETYPE_LIBS)
 HBDEPS   += $(FREETYPE_DEPS)
 HBSOURCES += $(HB_FT_sources)
 HBHEADERS += $(HB_FT_headers)
+HB_FREETYPE_DEF = define HB_FREETYPE 1
+else
+HB_FREETYPE_DEF = undef HB_FREETYPE
 endif
 
 if HAVE_GRAPHITE2
@@ -63,6 +69,9 @@ HBLIBS   += $(GRAPHITE2_LIBS)
 HBDEPS   += $(GRAPHITE2_DEPS)
 HBSOURCES += $(HB_GRAPHITE2_sources)
 HBHEADERS += $(HB_GRAPHITE2_headers)
+HB_GRAPHITE_DEF = define HB_GRAPHITE 1
+else
+HB_GRAPHITE_DEF = undef HB_GRAPHITE
 endif
 
 if HAVE_UNISCRIBE
@@ -70,6 +79,9 @@ HBCFLAGS += $(UNISCRIBE_CFLAGS)
 HBNONPCLIBS += $(UNISCRIBE_LIBS)
 HBSOURCES += $(HB_UNISCRIBE_sources)
 HBHEADERS += $(HB_UNISCRIBE_headers)
+HB_UNISCRIBE_DEF = define HB_UNISCRIBE 1
+else
+HB_UNISCRIBE_DEF = undef HB_UNISCRIBE
 endif
 
 if HAVE_DIRECTWRITE
@@ -77,6 +89,9 @@ HBCFLAGS += $(DIRECTWRITE_CXXFLAGS)
 HBNONPCLIBS += $(DIRECTWRITE_LIBS)
 HBSOURCES += $(HB_DIRECTWRITE_sources)
 HBHEADERS += $(HB_DIRECTWRITE_headers)
+HB_DIRECTWRITE_DEF = define HB_DIRECTWRITE 1
+else
+HB_DIRECTWRITE_DEF = undef HB_DIRECTWRITE
 endif
 
 if HAVE_GDI
@@ -84,6 +99,9 @@ HBCFLAGS += $(GDI_CXXFLAGS)
 HBNONPCLIBS += $(GDI_LIBS)
 HBSOURCES += $(HB_GDI_sources)
 HBHEADERS += $(HB_GDI_headers)
+HB_GDI_DEF = define HB_GDI 1
+else
+HB_GDI_DEF = undef HB_GDI
 endif
 
 if HAVE_CORETEXT
@@ -91,6 +109,9 @@ HBCFLAGS += $(CORETEXT_CFLAGS)
 HBNONPCLIBS += $(CORETEXT_LIBS)
 HBSOURCES += $(HB_CORETEXT_sources)
 HBHEADERS += $(HB_CORETEXT_headers)
+HB_CORETEXT_DEF = define HB_CORETEXT 1
+else
+HB_CORETEXT_DEF = undef HB_CORETEXT
 endif
 
 
@@ -147,7 +168,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = harfbuzz.pc
 cmakedir = $(libdir)/cmake/harfbuzz
 cmake_DATA = harfbuzz-config.cmake
-EXTRA_DIST += hb-version.h.in harfbuzz.pc.in harfbuzz-config.cmake.in
+EXTRA_DIST += hb-version.h.in hb-config.h.in harfbuzz.pc.in harfbuzz-config.cmake.in
 
 lib_LTLIBRARIES += libharfbuzz-subset.la
 libharfbuzz_subset_la_LINK = $(chosen_linker) $(libharfbuzz_subset_la_LDFLAGS)
@@ -178,6 +199,7 @@ HBCFLAGS += $(ICU_CFLAGS)
 HBLIBS += $(ICU_LIBS)
 HBSOURCES += $(HB_ICU_sources)
 HBHEADERS += $(HB_ICU_headers)
+HB_ICU_DEF = define HB_ICU 1
 else
 lib_LTLIBRARIES += libharfbuzz-icu.la
 libharfbuzz_icu_la_SOURCES = $(HB_ICU_sources)
@@ -187,6 +209,7 @@ libharfbuzz_icu_la_LIBADD = $(ICU_LIBS) libharfbuzz.la
 EXTRA_libharfbuzz_icu_la_DEPENDENCIES = $(harfbuzz_icu_def_dependency)
 pkginclude_HEADERS += $(HB_ICU_headers)
 pkgconfig_DATA += harfbuzz-icu.pc
+HB_ICU_DEF = undef HB_ICU
 endif
 endif
 EXTRA_DIST += harfbuzz-icu.pc.in
@@ -224,6 +247,23 @@ EXTRA_DIST += \
 	hb-gobject-enums.cc.tmpl \
 	hb-gobject-enums.h.tmpl \
 	$(NULL)
+
+
+BUILT_SOURCES += \
+	hb-config.h
+
+$(srcdir)/hb-config.h: hb-config.h.in $(top_srcdir)/configure.ac
+	$(AM_V_GEN) $(SED) \
+		-e 's/mesondefine HB_FREETYPE/$(HB_FREETYPE_DEF)/' \
+		-e 's/mesondefine HB_GDI/$(HB_GDI_DEF)/' \
+		-e 's/#mesondefine HB_GDI/$(HB_GDI_DEF)/' \
+		-e 's/#mesondefine HB_GRAPHITE/$(HB_GRAPHITE_DEF)/' \
+		-e 's/#mesondefine HB_GLIB/$(HB_GLIB_DEF)/' \
+		-e 's/#mesondefine HB_UNISCRIBE/$(HB_UNISCRIBE_DEF)/' \
+		-e 's/#mesondefine HB_DIRECTWRITE/$(HB_DIRECTWRITE_DEF)/' \
+		-e 's/#mesondefine HB_CORETEXT/$(HB_CORETEXT_DEF)/' \
+		-e 's/#mesondefine HB_ICU/$(HB_ICU_DEF)/' \
+		"$<" > "$@" || ($(RM) "$@"; false)
 
 
 %.pc: %.pc.in $(top_builddir)/config.status

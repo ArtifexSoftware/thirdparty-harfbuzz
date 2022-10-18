@@ -39,56 +39,56 @@ HB_BEGIN_DECLS
  *
  * Defined if Harfbuzz has been built with Freetype support.
  */
-#mesondefine HB_FREETYPE
+#undef HB_FREETYPE
 
 /**
  * HB_GDI:
  *
  * Defined if Harfbuzz has been built with GDI support.
  */
-#mesondefine HB_GDI
+#undef HB_GDI
 
 /**
  * HB_GRAPHITE:
  *
  * Defined if Harfbuzz has been built with Graphite support.
  */
-#mesondefine HB_GRAPHITE
+#undef HB_GRAPHITE
 
 /**
  * HB_GLIB:
  *
  * Defined if Harfbuzz has been built with GLib support.
  */
-#mesondefine HB_GLIB
+#undef HB_GLIB
 
 /**
  * HB_UNISCRIBE:
  *
  * Defined if Harfbuzz has been built with Uniscribe support.
  */
-#mesondefine HB_UNISCRIBE
+#undef HB_UNISCRIBE
 
 /**
  * HB_DIRECTWRITE:
  *
  * Defined if Harfbuzz has been built with DirectWrite support.
  */
-#mesondefine HB_DIRECTWRITE
+#undef HB_DIRECTWRITE
 
 /**
  * HB_CORETEXT:
  *
  * Defined if Harfbuzz has been built with CoreText support.
  */
-#mesondefine HB_CORETEXT
+#undef HB_CORETEXT
 
 /**
  * HB_ICU:
  *
  * Defined if Harfbuzz has been built with ICU support.
  */
-#mesondefine HB_ICU
+#undef HB_ICU
 
 
 HB_END_DECLS
