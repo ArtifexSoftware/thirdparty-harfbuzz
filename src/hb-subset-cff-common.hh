@@ -340,6 +340,7 @@ struct parsed_cs_str_t : parsed_values_t<parsed_cs_op_t>
     parsed = false;
     hint_dropped = false;
     has_prefix_ = false;
+    has_calls_ = false;
   }
 
   void add_op (op_code_t op, const byte_str_ref_t& str_ref)
@@ -359,6 +360,8 @@ struct parsed_cs_str_t : parsed_values_t<parsed_cs_op_t>
       parsed_cs_op_t val;
       val.init (subr_num);
       SUPER::add_op (op, str_ref, val);
+
+      has_calls_ = true;
     }
   }
 
@@ -388,11 +391,14 @@ struct parsed_cs_str_t : parsed_values_t<parsed_cs_op_t>
   op_code_t prefix_op () const         { return prefix_op_; }
   const number_t &prefix_num () const { return prefix_num_; }
 
+  bool has_calls () const { return has_calls_; }
+
   protected:
   bool    parsed;
   bool    hint_dropped;
   bool    vsindex_dropped;
   bool    has_prefix_;
+  bool    has_calls_;
   op_code_t	prefix_op_;
   number_t	prefix_num_;
 
@@ -968,6 +974,9 @@ struct subr_subsetter_t
 
   void collect_subr_refs_in_str (const parsed_cs_str_t &str, const subr_subset_param_t &param)
   {
+    if (!str.has_calls ())
+      return;
+
     unsigned count = str.values.length;
     auto &values = str.values.arrayZ;
     for (unsigned int pos = 0; pos < count; pos++)
@@ -1009,29 +1018,37 @@ struct subr_subsetter_t
 	encoder.encode_op (str.prefix_op ());
     }
     auto &arr = str.values.arrayZ;
-    for (unsigned int i = 0; i < count; i++)
-    {
-      const parsed_cs_op_t  &opstr = arr[i];
-      if (!opstr.for_drop () && !opstr.for_skip ())
+    if (str.has_calls ())
+      for (unsigned int i = 0; i < count; i++)
       {
-	switch (opstr.op)
+	const parsed_cs_op_t  &opstr = arr[i];
+	if (!opstr.for_drop () && !opstr.for_skip ())
 	{
-	  case OpCode_callsubr:
-	    encoder.encode_int (remaps.local_remaps[fd].biased_num (opstr.subr_num));
-	    encoder.encode_op (OpCode_callsubr);
-	    break;
+	  switch (opstr.op)
+	  {
+	    case OpCode_callsubr:
+	      encoder.encode_int (remaps.local_remaps[fd].biased_num (opstr.subr_num));
+	      encoder.encode_op (OpCode_callsubr);
+	      break;
 
-	  case OpCode_callgsubr:
-	    encoder.encode_int (remaps.global_remap.biased_num (opstr.subr_num));
-	    encoder.encode_op (OpCode_callgsubr);
-	    break;
+	    case OpCode_callgsubr:
+	      encoder.encode_int (remaps.global_remap.biased_num (opstr.subr_num));
+	      encoder.encode_op (OpCode_callgsubr);
+	      break;
 
-	  default:
-	    encoder.copy_str (opstr.ptr, opstr.length);
-	    break;
+	    default:
+	      encoder.copy_str (opstr.ptr, opstr.length);
+	      break;
+	  }
 	}
       }
-    }
+    else
+      for (unsigned int i = 0; i < count; i++)
+      {
+	const parsed_cs_op_t  &opstr = arr[i];
+	if (!opstr.for_drop () && !opstr.for_skip ())
+	  encoder.copy_str (opstr.ptr, opstr.length);
+      }
     return !encoder.in_error ();
   }
 
