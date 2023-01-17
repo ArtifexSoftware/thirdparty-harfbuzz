@@ -62,6 +62,7 @@ jobs:
       - name: Build
         run: |
           export PATH=$PATH:$(cygpath -u $USERPROFILE/.cargo/bin)
+          ls $USERPROFILE/.cargo/bin
           sccache --version
           meson build \
             --wrap-mode=nodownload \
