@@ -72,7 +72,7 @@ jobs:
             -Dgdi=enabled \
             -Dgraphite=enabled \
             -Dchafa=disabled
-          ninja -C build
+          ninja -v -C build
       - name: Test
         run: |
           meson test \
