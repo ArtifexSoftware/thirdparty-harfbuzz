@@ -24,8 +24,6 @@ jobs:
     name: ${{ matrix.MSYSTEM }}
 
     env:
-      # XXX: For some reason enabling jit debugging "fixes" random python crashes
-      # see https://github.com/msys2/MINGW-packages/issues/11864
       MSYS: "winjitdebug"
 
     defaults:
@@ -61,8 +59,12 @@ jobs:
           pip install --upgrade fonttools
       - name: Build
         run: |
+          # XXX: For some reason enabling jit debugging "fixes" random python crashes
+          # see https://github.com/msys2/MINGW-packages/issues/11864
+          export MSYS=winjitdebug
+
+          # Add sccache path to PATH since msys2 shell uses a stripped-down PATH.
           export PATH=$PATH:$(cygpath -u $USERPROFILE/.cargo/bin)
-          ls $USERPROFILE/.cargo/bin
           sccache --version
           meson build \
             --wrap-mode=nodownload \
@@ -72,7 +74,7 @@ jobs:
             -Dgdi=enabled \
             -Dgraphite=enabled \
             -Dchafa=disabled
-          ninja -v -C build
+          ninja -C build
       - name: Test
         run: |
           meson test \
