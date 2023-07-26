@@ -225,7 +225,7 @@ struct Lookup : public OT::Lookup
         if (is_ext)
         {
           unsigned ext_id = create_extension_subtable (c, subtable_id, type);
-          c.graph.vertices_[subtable_id].parents.set (ext_id, 0);
+          c.graph.vertices_[subtable_id].parents.add (ext_id);
           subtable_id = ext_id;
         }
 
@@ -234,7 +234,7 @@ struct Lookup : public OT::Lookup
         link->objidx = subtable_id;
         link->position = (char*) &new_lookup->subTable[offset_index++] -
                          (char*) new_lookup;
-        c.graph.vertices_[subtable_id].parents.set (this_index, 0);
+        c.graph.vertices_[subtable_id].parents.add (this_index);
       }
     }
 
@@ -315,7 +315,7 @@ struct Lookup : public OT::Lookup
     // Make extension point at the subtable.
     auto& ext_vertex = c.graph.vertices_[ext_index];
     auto& subtable_vertex = c.graph.vertices_[subtable_index];
-    ext_vertex.parents.set (lookup_index, 0);
+    ext_vertex.parents.add (lookup_index);
     subtable_vertex.remap_parent (lookup_index, ext_index);
 
     return true;

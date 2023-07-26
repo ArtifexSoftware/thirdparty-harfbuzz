@@ -419,7 +419,7 @@ struct PairPosFormat2 : public OT::Layout::GPOS_impl::PairPosFormat2_4<SmallType
     class_def_link->width = SmallTypes::size;
     class_def_link->objidx = class_def_2_id;
     class_def_link->position = 10;
-    graph.vertices_[class_def_2_id].parents.set (pair_pos_prime_id, 0);
+    graph.vertices_[class_def_2_id].parents.add (pair_pos_prime_id);
     graph.duplicate (pair_pos_prime_id, class_def_2_id);
 
     return pair_pos_prime_id;
