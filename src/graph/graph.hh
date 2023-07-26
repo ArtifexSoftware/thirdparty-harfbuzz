@@ -44,7 +44,7 @@ struct graph_t
     hb_serialize_context_t::object_t obj;
     int64_t distance = 0 ;
     int64_t space = 0 ;
-    hb_vector_t<unsigned> parents;
+    hb_map_t parents;
     unsigned start = 0;
     unsigned end = 0;
     unsigned priority = 0;
@@ -164,23 +164,17 @@ struct graph_t
 
     bool is_shared () const
     {
-      return parents.length > 1;
+      return parents.get_population () > 1;
     }
 
     unsigned incoming_edges () const
     {
-      return parents.length;
+      return parents.get_population ();
     }
 
     void remove_parent (unsigned parent_index)
     {
-      unsigned count = parents.length;
-      for (unsigned i = 0; i < count; i++)
-      {
-        if (parents.arrayZ[i] != parent_index) continue;
-        parents.remove_unordered (i);
-        break;
-      }
+      parents.del (parent_index);
     }
 
     void remove_real_link (unsigned child_index, const void* offset)
@@ -202,21 +196,29 @@ struct graph_t
 
     void remap_parents (const hb_vector_t<unsigned>& id_map)
     {
-      unsigned count = parents.length;
-      for (unsigned i = 0; i < count; i++)
-        parents.arrayZ[i] = id_map[parents.arrayZ[i]];
+      hb_map_t new_parents;
+      for (auto p : parents.keys ())
+        new_parents.set (id_map[p], 0);
+
+      // XXX The following gives me a weird "uninitialized use" warning...
+#if 0
+      auto mapper =
+      + hb_iter (parents)
+      | hb_map ([&id_map] (hb_pair_t<hb_codepoint_t, hb_codepoint_t> p) { return hb_pair (id_map[p.first], p.second); })
+      ;
+
+      auto new_parents = hb_map_t {mapper};
+#endif
+
+      parents = std::move (new_parents);
     }
 
     void remap_parent (unsigned old_index, unsigned new_index)
     {
-      unsigned count = parents.length;
-      for (unsigned i = 0; i < count; i++)
+      if (parents.has (old_index))
       {
-        if (parents.arrayZ[i] == old_index)
-	{
-	  parents.arrayZ[i] = new_index;
-	  break;
-	}
+	parents.del (old_index);
+	parents.set (new_index, 0);
       }
     }
 
@@ -423,7 +425,7 @@ struct graph_t
     link->width = 2;
     link->objidx = child_id;
     link->position = (char*) offset - (char*) v.obj.head;
-    vertices_[child_id].parents.push (parent_id);
+    vertices_[child_id].parents.set (parent_id, 0);
   }
 
   /*
@@ -609,7 +611,7 @@ struct graph_t
   {
     unsigned child_idx = index_for_offset (node_idx, offset);
     auto& child = vertices_[child_idx];
-    for (unsigned p : child.parents)
+    for (unsigned p : child.parents.keys ())
     {
       if (p != node_idx) {
         return duplicate (node_idx, child_idx);
@@ -828,7 +830,7 @@ struct graph_t
     new_link->position = (const char*) new_offset - (const char*) new_v.obj.head;
 
     auto& child = vertices_[child_id];
-    child.parents.push (new_parent_idx);
+    child.parents.set (new_parent_idx, 0);
 
     old_v.remove_real_link (child_id, old_offset);
     child.remove_parent (old_parent_idx);
@@ -878,12 +880,12 @@ struct graph_t
     for (const auto& l : child.obj.real_links)
     {
       clone->obj.real_links.push (l);
-      vertices_[l.objidx].parents.push (clone_idx);
+      vertices_[l.objidx].parents.set (clone_idx, 0);
     }
     for (const auto& l : child.obj.virtual_links)
     {
       clone->obj.virtual_links.push (l);
-      vertices_[l.objidx].parents.push (clone_idx);
+      vertices_[l.objidx].parents.set (clone_idx, 0);
     }
 
     check_success (!clone->obj.real_links.in_error ());
@@ -1136,7 +1138,7 @@ struct graph_t
       return 0;
     }
 
-    return space_for (node.parents[0], root);
+    return space_for (*node.parents.keys (), root);
   }
 
   void err_other_error () { this->successful = false; }
@@ -1160,12 +1162,8 @@ struct graph_t
   unsigned wide_parents (unsigned node_idx, hb_set_t& parents) const
   {
     unsigned count = 0;
-    hb_set_t visited;
-    for (unsigned p : vertices_[node_idx].parents)
+    for (unsigned p : vertices_[node_idx].parents.keys ())
     {
-      if (visited.has (p)) continue;
-      visited.add (p);
-
       // Only real links can be wide
       for (const auto& l : vertices_[p].obj.real_links)
       {
@@ -1201,7 +1199,7 @@ struct graph_t
     {
       for (auto& l : vertices_.arrayZ[p].obj.all_links ())
       {
-        vertices_[l.objidx].parents.push (p);
+        vertices_[l.objidx].parents.set (p, 0);
       }
     }
 
@@ -1309,7 +1307,7 @@ struct graph_t
     unsigned old_idx = link.objidx;
     link.objidx = new_idx;
     vertices_[old_idx].remove_parent (parent_idx);
-    vertices_[new_idx].parents.push (parent_idx);
+    vertices_[new_idx].parents.set (parent_idx, 0);
   }
 
   /*
@@ -1379,7 +1377,7 @@ struct graph_t
     for (const auto& l : v.obj.all_links ())
       find_connected_nodes (l.objidx, targets, visited, connected);
 
-    for (unsigned p : v.parents)
+    for (unsigned p : v.parents.keys ())
       find_connected_nodes (p, targets, visited, connected);
   }
 
