@@ -40,12 +40,13 @@
 
 namespace OT {
 
-struct GlyphVariationData : TupleVariationData
-{};
-
+template <typename OffsetType>
 struct glyph_variations_t
 {
-  using tuple_variations_t = TupleVariationData::tuple_variations_t;
+  // TODO: Move tuple_variations_t to outside of TupleVariationData
+  using tuple_variations_t = typename TupleVariationData<OffsetType>::tuple_variations_t;
+  using GlyphVariationData = TupleVariationData<OffsetType>;
+
   hb_vector_t<tuple_variations_t> glyph_variations;
 
   hb_vector_t<char> compiled_shared_tuples;
@@ -88,7 +89,7 @@ struct glyph_variations_t
 
       const GlyphVariationData* p = reinterpret_cast<const GlyphVariationData*> (var_data.arrayZ);
       hb_vector_t<unsigned> shared_indices;
-      GlyphVariationData::tuple_iterator_t iterator;
+      typename GlyphVariationData::tuple_iterator_t iterator;
       tuple_variations_t tuple_vars;
 
       /* in case variation data is empty, push an empty struct into the vector,
@@ -260,7 +261,7 @@ struct glyph_variations_t
     hb_codepoint_t last_gid = 0;
     unsigned idx = 0;
 
-    TupleVariationData* cur_glyph = c->start_embed<TupleVariationData> ();
+    GlyphVariationData* cur_glyph = c->start_embed<GlyphVariationData> ();
     if (!cur_glyph) return_trace (false);
     for (auto &_ : it)
     {
@@ -274,7 +275,7 @@ struct glyph_variations_t
 
       if (idx >= glyph_variations.length) return_trace (false);
       if (!cur_glyph->serialize (c, true, glyph_variations[idx])) return_trace (false);
-      TupleVariationData* next_glyph = c->start_embed<TupleVariationData> ();
+      GlyphVariationData* next_glyph = c->start_embed<GlyphVariationData> ();
       glyph_offset += (char *) next_glyph - (char *) cur_glyph;
 
       if (long_offset)
@@ -302,6 +303,8 @@ struct gvar_GVAR
 {
   static constexpr hb_tag_t tableTag = TableTag;
 
+  using GlyphVariationData = TupleVariationData<GidOffsetType>;
+
   bool sanitize_shallow (hb_sanitize_context_t *c) const
   {
     TRACE_SANITIZE (this);
@@ -319,7 +322,7 @@ struct gvar_GVAR
   { return sanitize_shallow (c); }
 
   bool decompile_glyph_variations (hb_subset_context_t *c,
-                                   glyph_variations_t& glyph_vars /* OUT */) const
+                                   glyph_variations_t<GidOffsetType>& glyph_vars /* OUT */) const
   {
     hb_hashmap_t<hb_codepoint_t, hb_bytes_t> new_gid_var_data_map;
     auto it = hb_iter (c->plan->new_to_old_gid_list);
@@ -346,7 +349,7 @@ struct gvar_GVAR
   template<typename Iterator,
            hb_requires (hb_is_iterator (Iterator))>
   bool serialize (hb_serialize_context_t *c,
-                  const glyph_variations_t& glyph_vars,
+                  const glyph_variations_t<GidOffsetType>& glyph_vars,
                   Iterator it,
                   unsigned axis_count,
                   unsigned num_glyphs,
@@ -395,7 +398,7 @@ struct gvar_GVAR
   bool instantiate (hb_subset_context_t *c) const
   {
     TRACE_SUBSET (this);
-    glyph_variations_t glyph_vars;
+    glyph_variations_t<GidOffsetType> glyph_vars;
     if (!decompile_glyph_variations (c, glyph_vars))
       return_trace (false);
 
@@ -636,7 +639,7 @@ struct gvar_GVAR
       hb_bytes_t var_data_bytes = table->get_glyph_var_data_bytes (table.get_blob (), glyphCount, glyph);
       if (!var_data_bytes.as<GlyphVariationData> ()->has_data ()) return true;
       hb_vector_t<unsigned int> shared_indices;
-      GlyphVariationData::tuple_iterator_t iterator;
+      typename GlyphVariationData::tuple_iterator_t iterator;
       if (!GlyphVariationData::get_tuple_iterator (var_data_bytes, table->axisCount,
 						   var_data_bytes.arrayZ,
 						   shared_indices, &iterator))
