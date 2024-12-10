@@ -305,6 +305,8 @@ struct gvar_GVAR
 
   using GlyphVariationData = TupleVariationData<GidOffsetType>;
 
+  bool has_data () const { return version.to_int () != 0; }
+
   bool sanitize_shallow (hb_sanitize_context_t *c) const
   {
     TRACE_SANITIZE (this);
@@ -562,6 +564,8 @@ struct gvar_GVAR
   public:
   struct accelerator_t
   {
+    bool has_data () const { return table->has_data (); }
+
     accelerator_t (hb_face_t *face)
     {
       table = hb_sanitize_context_t ().reference_table<gvar_GVAR> (face);
