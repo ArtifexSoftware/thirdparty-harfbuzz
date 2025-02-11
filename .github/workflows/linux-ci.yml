@@ -40,7 +40,9 @@ jobs:
       with:
         python-version: '3.12'
     - name: Install Python Dependencies
-      run: pip3 install -r .ci/requirements.txt --require-hashes
+      run: |
+        pip3 install -r .ci/requirements.txt --require-hashes
+        pip3 install -U gcovr
     - name: Setup Meson
       run: |
         ccache --version
