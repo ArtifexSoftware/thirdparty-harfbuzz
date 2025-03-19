@@ -361,6 +361,8 @@ _hb_directwrite_shape (hb_shape_plan_t    *shape_plan,
     return false;
   IDWriteFactory *dwriteFactory = global->dwriteFactory;
 
+  fontFace->AddRef ();
+
   IDWriteTextAnalyzer* analyzer;
   dwriteFactory->CreateTextAnalyzer (&analyzer);
 
@@ -427,6 +429,7 @@ _hb_directwrite_shape (hb_shape_plan_t    *shape_plan,
 #define FAIL(...) \
   HB_STMT_START { \
     DEBUG_MSG (DIRECTWRITE, nullptr, __VA_ARGS__); \
+    fontFace->Release (); \
     return false; \
   } HB_STMT_END
 
@@ -441,6 +444,45 @@ _hb_directwrite_shape (hb_shape_plan_t    *shape_plan,
   if (buffer->props.language)
     mbstowcs ((wchar_t*) localeName,
 	      hb_language_to_string (buffer->props.language), 20);
+
+  /*
+   * Set up variations.
+   */
+  if (font->num_coords)
+  {
+    IDWriteFontFace5 *fontFace5;
+    if (SUCCEEDED (fontFace->QueryInterface (__uuidof (IDWriteFontFace5), (void **) &fontFace5)))
+    {
+      IDWriteFontResource *fontResource;
+      if (SUCCEEDED (fontFace5->GetFontResource (&fontResource)))
+      {
+        hb_vector_t<DWRITE_FONT_AXIS_VALUE> axis_values;
+        if (likely (axis_values.resize_exact (font->num_coords)))
+        {
+          for (unsigned int i = 0; i < font->num_coords; i++)
+          {
+            hb_ot_var_axis_info_t info;
+            unsigned int c = 1;
+            hb_ot_var_get_axis_infos (font->face, i, &c, &info);
+            axis_values[i].axisTag = (DWRITE_FONT_AXIS_TAG) hb_uint32_swap (info.tag);
+            axis_values[i].value = i < font->num_coords ?
+                                    hb_clamp (font->design_coords[i], info.min_value, info.max_value) :
+                                    info.default_value;
+          }
+
+          IDWriteFontFace5 *fontFaceVars;
+          if (SUCCEEDED (fontResource->CreateFontFace (DWRITE_FONT_SIMULATIONS::DWRITE_FONT_SIMULATIONS_NONE,
+                                                      axis_values.arrayZ, axis_values.length, &fontFaceVars)))
+          {
+            fontFace->Release ();
+            fontFace = fontFaceVars;
+          }
+        }
+        fontResource->Release ();
+      }
+      fontFace5->Release ();
+    }
+  }
 
   /*
    * Set up features.
@@ -613,6 +655,8 @@ retry_getglyphs:
   delete [] glyphProperties;
   delete [] glyphAdvances;
   delete [] glyphOffsets;
+
+  fontFace->Release ();
 
   /* Wow, done! */
   return true;
