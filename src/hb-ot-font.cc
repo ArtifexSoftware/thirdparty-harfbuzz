@@ -518,6 +518,23 @@ hb_ot_get_glyph_v_advances (hb_font_t* font, void* font_data,
 
 #ifndef HB_NO_VERTICAL
 static inline hb_position_t
+_hb_ot_get_glyph_v_origin_from_VORG_VVAR_unscaled (hb_font_t *font,
+						   const OT::VORG &VORG,
+						   const OT::VVAR &VVAR,
+						   hb_codepoint_t glyph)
+{
+  float origin = VORG.get_y_origin (glyph);
+
+#ifndef HB_NO_VAR
+  if (font->has_nonzero_coords)
+    origin += VVAR.get_vorg_delta_unscaled (glyph, font->coords, font->num_coords);
+#endif
+
+  return round(origin);
+}
+
+
+static inline hb_position_t
 _hb_ot_get_glyph_v_origin (hb_font_t *font,
 			   const hb_ot_font_t *ot_font,
 			   const hb_ot_face_t *ot_face,
@@ -529,14 +546,8 @@ _hb_ot_get_glyph_v_origin (hb_font_t *font,
 
   if (VORG.has_data ())
   {
-    float origin = VORG.get_y_origin (glyph);
-
-#ifndef HB_NO_VAR
-    if (font->has_nonzero_coords)
-      origin += VVAR.get_vorg_delta_unscaled (glyph, font->coords, font->num_coords);
-#endif
-
-    return font->em_scalef_y (origin);
+    hb_position_t origin_unscaled = _hb_ot_get_glyph_v_origin_from_VORG_VVAR_unscaled (font, VORG, VVAR, glyph);
+    return font->em_scale_y (origin_unscaled);
   }
 
   hb_glyph_extents_t extents = {0};
@@ -555,9 +566,13 @@ _hb_ot_get_glyph_v_origin (hb_font_t *font,
     return extents.y_bearing + (diff >> 1);
   }
 
+  /* Otherwise, use horizontal font ascender as every glyph's vertical origin.
+   * No cache necessary. */
   hb_font_extents_t font_extents;
   font->get_h_extents_with_fallback (&font_extents);
-  return font_extents.ascender;
+
+  hb_position_t origin = font_extents.ascender;
+  return origin;
 }
 
 static hb_bool_t
