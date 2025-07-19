@@ -524,20 +524,19 @@ _hb_ot_get_glyph_v_origin (hb_font_t *font,
 			   hb_codepoint_t glyph)
 {
   const OT::VORG &VORG = *ot_face->VORG;
+  const OT::vmtx_accelerator_t &vmtx = *ot_face->vmtx;
+  const OT::VVAR &VVAR = *vmtx.var_table;
+
   if (VORG.has_data ())
   {
-    float delta = 0;
+    float origin = VORG.get_y_origin (glyph);
 
 #ifndef HB_NO_VAR
-    const OT::vmtx_accelerator_t &vmtx = *ot_face->vmtx;
-    const OT::VVAR &VVAR = *vmtx.var_table;
     if (font->has_nonzero_coords)
-      VVAR.get_vorg_delta_unscaled (glyph,
-				    font->coords, font->num_coords,
-				    &delta);
+      origin += VVAR.get_vorg_delta_unscaled (glyph, font->coords, font->num_coords);
 #endif
 
-    return font->em_scalef_y (VORG.get_y_origin (glyph) + delta);
+    return font->em_scalef_y (origin);
   }
 
   hb_glyph_extents_t extents = {0};
@@ -585,6 +584,12 @@ hb_ot_get_glyph_v_origins (hb_font_t *font,
     *first_x = *first_x / 2;
     first_x = &StructAtOffsetUnaligned<hb_position_t> (first_x, x_stride);
   }
+
+  /* The vertical origin business is messy...
+   *
+   *
+   *
+   */
 
   for (unsigned i = 0; i < count; i++)
   {
