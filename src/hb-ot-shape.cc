@@ -1132,6 +1132,9 @@ hb_propagate_flags (hb_buffer_t *buffer)
 
   foreach_cluster (buffer, start, end)
   {
+    if (end - start == 1)
+      continue;
+
     unsigned int mask = 0;
     for (unsigned int i = start; i < end; i++)
       mask |= info[i].mask;
