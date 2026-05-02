@@ -232,9 +232,7 @@ struct hb_array_t : hb_iter_with_fallback_t<hb_array_t<Type>, Type&>
   hb_sorted_array_t<Type> qsort (Compar compar)
   {
     if (likely (length))
-      sort_r_simple (arrayZ, length, sizeof (Type),
-		     [&] (const void *a, const void *b)
-		     { return compar (*(const Type *) a, *(const Type *) b); });
+      hb_qsort_inline (arrayZ, length, compar);
     return hb_sorted_array_t<Type> (*this);
   }
 
