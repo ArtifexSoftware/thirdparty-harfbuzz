@@ -1305,17 +1305,27 @@ hb_bsearch (const K& key, V* base,
 }
 
 
-/* Quicksort with median-of-three pivot, two-way Hoare partition,
- * tail-call elimination on the larger side, and insertion-sort
- * fall-through for small ranges.  Comparator follows C qsort
- * convention (negative / zero / positive int).
+/* Quicksort partitioning loop: median-of-three pivot, two-way
+ * Hoare partition, tail-call elimination on the larger side.
+ * Stops partitioning when subranges shrink below the threshold;
+ * a single insertion-sort pass over the whole array (run by the
+ * caller) finishes the job.  Same structure libstdc++ uses for
+ * std::sort.
+ *
+ * Not stable; equivalent values may be swapped. */
+/* Quicksort partitioning loop: median-of-three pivot, two-way
+ * Hoare partition, tail-call elimination on the larger side.
+ * Stops partitioning when subranges shrink below the threshold;
+ * a single insertion-sort pass over the whole array (run by
+ * hb_qsort_inline below) finishes the job.  Same shape libstdc++
+ * uses for std::sort.
  *
  * Not stable; equivalent values may be swapped. */
 template <typename T, typename Compar>
 static inline void
-hb_qsort_inline (T *base, size_t nel, Compar compar)
+hb_qsort_loop (T *base, size_t nel, Compar compar)
 {
-  while (nel > 16)
+  while (nel > 32)
   {
     T *last = base + nel - 1;
     T *mid = base + nel / 2;
@@ -1330,8 +1340,9 @@ hb_qsort_inline (T *base, size_t nel, Compar compar)
     hb_swap (*mid, *(last - 1));
     T &pivot = *(last - 1);
 
-    /* Two-way Hoare partition.  base and last are sentinels
-     * (already <= and >= pivot respectively). */
+    /* Two-way Hoare partition.  Inner loops are unguarded:
+     * median-of-three left *base <= pivot and *last >= pivot,
+     * which act as sentinels. */
     T *i = base, *j = last - 1;
     while (true)
     {
@@ -1348,18 +1359,27 @@ hb_qsort_inline (T *base, size_t nel, Compar compar)
     size_t right = nel - left - 1;
     if (left < right)
     {
-      hb_qsort_inline (base, left, compar);
+      hb_qsort_loop (base, left, compar);
       base = i + 1;
       nel  = right;
     }
     else
     {
-      hb_qsort_inline (i + 1, right, compar);
+      hb_qsort_loop (i + 1, right, compar);
       nel  = left;
     }
   }
+}
 
-  /* Insertion sort for small inputs. */
+template <typename T, typename Compar>
+static inline void
+hb_qsort_inline (T *base, size_t nel, Compar compar)
+{
+  hb_qsort_loop (base, nel, compar);
+
+  /* Single final insertion sort over the whole array.  After
+   * the partitioning loop, every element is within the threshold
+   * of its sorted position, so this pass is O(n * threshold). */
   T *end = base + nel;
   for (T *pi = base + 1; pi < end; pi++)
     for (T *pj = pi; pj > base && compar (pj[-1], pj[0]) > 0; pj--)
