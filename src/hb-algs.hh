@@ -1325,7 +1325,7 @@ template <typename T, typename Compar>
 static inline void
 hb_qsort_loop (T *base, size_t nel, Compar compar)
 {
-  while (nel > 32)
+  while (nel > 24)
   {
     T *last = base + nel - 1;
     T *mid = base + nel / 2;
