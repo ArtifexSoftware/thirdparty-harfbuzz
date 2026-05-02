@@ -197,7 +197,7 @@ struct post
 	auto thiz = this;
 	hb_array_t<uint16_t> (gids, count)
 	  .qsort ([thiz] (const uint16_t &a, const uint16_t &b) {
-	    return thiz->find_glyph_name (a).cmp (thiz->find_glyph_name (b)) > 0;
+	    return thiz->find_glyph_name (a).cmp (thiz->find_glyph_name (b));
 	  });
 
 	if (unlikely (!gids_sorted_by_name.cmpexch (nullptr, gids)))
