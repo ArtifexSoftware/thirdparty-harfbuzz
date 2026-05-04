@@ -207,7 +207,7 @@ demo_font_print_stats (demo_font_t *font)
   if (!font->num_glyphs)
     return;
 
-  LOGI ("%3d glyphs; avg %5.2fkb per glyph; atlas used %5.2fkb\n",
+  LOGI ("%3u glyphs; avg %5.2fkb per glyph; atlas used %5.2fkb\n",
 	font->num_glyphs,
 	font->sum_bytes / 1024. / font->num_glyphs,
 	atlas_used_kb);

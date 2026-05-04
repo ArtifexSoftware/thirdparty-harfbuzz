@@ -3,6 +3,9 @@
 
 #include <cmath>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+
 /*
  * (c) Copyright 1993, 1994, Silicon Graphics, Inc.
  * ALL RIGHTS RESERVED
@@ -338,5 +341,7 @@ build_rotmatrix(float m[4][4], float q[4])
     m[3][3] = 1.0;
 }
 
+
+#pragma GCC diagnostic pop
 
 #endif /* TRACKBALL_HH */

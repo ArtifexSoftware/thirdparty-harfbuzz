@@ -7,6 +7,9 @@
 #include <cmath>
 #include <cstring>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+
 /*
  * Copyright (c) 2009, Mozilla Corp
  * Copyright (c) 2012, Google, Inc.
@@ -404,5 +407,7 @@ m4Transpose (float *mat) {
 
   return mat;
 }
+
+#pragma GCC diagnostic pop
 
 #endif /* MATRIX4X4_HH */
