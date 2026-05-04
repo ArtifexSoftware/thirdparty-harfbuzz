@@ -182,7 +182,7 @@ demo_view_apply_transform (demo_view_t *vu, float *mat, int width, int height)
   m4Translate (mat, vu->translate.x, vu->translate.y, 0);
 
   {
-    double d = std::max (width, height);
+    double d = hb_max (width, height);
     double znear = d / vu->perspective;
     double zfar = znear + d;
     double factor = znear / (2 * znear + d);
@@ -783,12 +783,12 @@ demo_view_display (demo_view_t *vu, demo_buffer_t *buffer)
   demo_extents_t ink, logical;
   demo_buffer_extents (buffer, &ink, &logical);
   demo_extents_t extents = {
-    std::min (ink.min_x, logical.min_x),
-    std::min (ink.min_y, logical.min_y),
-    std::max (ink.max_x, logical.max_x),
-    std::max (ink.max_y, logical.max_y),
+    hb_min (ink.min_x, logical.min_x),
+    hb_min (ink.min_y, logical.min_y),
+    hb_max (ink.max_x, logical.max_x),
+    hb_max (ink.max_y, logical.max_y),
   };
-  double content_scale = .9 * std::min (width  / (extents.max_x - extents.min_x),
+  double content_scale = .9 * hb_min (width  / (extents.max_x - extents.min_x),
 					height / (extents.max_y - extents.min_y));
   m4Scale (mat, content_scale, content_scale, 1);
   m4Translate (mat,

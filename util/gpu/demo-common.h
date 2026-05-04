@@ -10,6 +10,8 @@
 #include <hb.h>
 #include <hb-gpu.h>
 
+#include "hb.hh"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -105,10 +107,10 @@ demo_extents_add (demo_extents_t *extents, const demo_point_t *p)
     extents->min_y = extents->max_y = p->y;
     return;
   }
-  extents->min_x = std::min (extents->min_x, p->x);
-  extents->min_y = std::min (extents->min_y, p->y);
-  extents->max_x = std::max (extents->max_x, p->x);
-  extents->max_y = std::max (extents->max_y, p->y);
+  extents->min_x = hb_min (extents->min_x, p->x);
+  extents->min_y = hb_min (extents->min_y, p->y);
+  extents->max_x = hb_max (extents->max_x, p->x);
+  extents->max_y = hb_max (extents->max_y, p->y);
 }
 
 static inline void
@@ -120,10 +122,10 @@ demo_extents_extend (demo_extents_t *extents, const demo_extents_t *other)
     *extents = *other;
     return;
   }
-  extents->min_x = std::min (extents->min_x, other->min_x);
-  extents->min_y = std::min (extents->min_y, other->min_y);
-  extents->max_x = std::max (extents->max_x, other->max_x);
-  extents->max_y = std::max (extents->max_y, other->max_y);
+  extents->min_x = hb_min (extents->min_x, other->min_x);
+  extents->min_y = hb_min (extents->min_y, other->min_y);
+  extents->max_x = hb_max (extents->max_x, other->max_x);
+  extents->max_y = hb_max (extents->max_y, other->max_y);
 }
 
 
