@@ -31,6 +31,8 @@
  * Uses demo_view for input/view (with HB_GPU_NO_GLFW).
  */
 
+#define HB_NO_PRAGMA_GCC_DIAGNOSTIC
+
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #include <webgpu/webgpu.h>

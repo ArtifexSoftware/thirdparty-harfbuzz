@@ -39,6 +39,8 @@
  *   python3 -m http.server -d util/gpu/web/out
  */
 
+#define HB_NO_PRAGMA_GCC_DIAGNOSTIC
+
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
