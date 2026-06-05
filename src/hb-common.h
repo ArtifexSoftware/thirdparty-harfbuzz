@@ -885,19 +885,19 @@ typedef uint32_t hb_color_t;
 
 HB_EXTERN uint8_t
 hb_color_get_alpha (hb_color_t color);
-#define hb_color_get_alpha(color)	((color) & 0xFF)
+#define hb_color_get_alpha_macro(color)	((color) & 0xFF)
 
 HB_EXTERN uint8_t
 hb_color_get_red (hb_color_t color);
-#define hb_color_get_red(color)		(((color) >> 8) & 0xFF)
+#define hb_color_get_red_macro(color)		(((color) >> 8) & 0xFF)
 
 HB_EXTERN uint8_t
 hb_color_get_green (hb_color_t color);
-#define hb_color_get_green(color)	(((color) >> 16) & 0xFF)
+#define hb_color_get_green_macro(color)	(((color) >> 16) & 0xFF)
 
 HB_EXTERN uint8_t
 hb_color_get_blue (hb_color_t color);
-#define hb_color_get_blue(color)	(((color) >> 24) & 0xFF)
+#define hb_color_get_blue_macro(color)	(((color) >> 24) & 0xFF)
 
 HB_END_DECLS
 

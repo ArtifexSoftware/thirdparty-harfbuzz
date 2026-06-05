@@ -82,6 +82,10 @@
 #define hb_buffer_set_segment_properties fzhb_buffer_set_segment_properties
 #define hb_buffer_set_unicode_funcs fzhb_buffer_set_unicode_funcs
 #define hb_buffer_set_user_data fzhb_buffer_set_user_data
+#define hb_color_get_alpha fzhb_color_get_alpha
+#define hb_color_get_blue fzhb_color_get_blue
+#define hb_color_get_green fzhb_color_get_green
+#define hb_color_get_red fzhb_color_get_red
 #define hb_coretext_face_create fzhb_coretext_face_create
 #define hb_coretext_face_get_cg_font fzhb_coretext_face_get_cg_font
 #define hb_coretext_font_create fzhb_coretext_font_create
@@ -238,6 +242,7 @@
 #define hb_glib_get_unicode_funcs fzhb_glib_get_unicode_funcs
 #define hb_glib_script_from_script fzhb_glib_script_from_script
 #define hb_glib_script_to_script fzhb_glib_script_to_script
+#define hb_glyph_info_get_glyph_flags fzhb_glyph_info_get_glyph_flags
 #define hb_gobject_blob_get_type fzhb_gobject_blob_get_type
 #define hb_gobject_buffer_get_type fzhb_gobject_buffer_get_type
 #define hb_gobject_draw_funcs_get_type fzhb_gobject_draw_funcs_get_type
@@ -452,6 +457,7 @@
 #define hb_subset_preprocess fzhb_subset_preprocess
 #define hb_tag_from_string fzhb_tag_from_string
 #define hb_tag_to_string fzhb_tag_to_string
+#define hb_ucd_get_unicode_funcs fzhb_ucd_get_unicode_funcs
 #define hb_unicode_combining_class fzhb_unicode_combining_class
 #define hb_unicode_compose fzhb_unicode_compose
 #define hb_unicode_decompose fzhb_unicode_decompose
@@ -485,6 +491,7 @@
 #define hb_version fzhb_version
 #define hb_version_atleast fzhb_version_atleast
 #define hb_version_string fzhb_version_string
+#define minus_1 fzhb_minus_1
 
 
 #endif

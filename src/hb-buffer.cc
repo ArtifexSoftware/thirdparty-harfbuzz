@@ -1560,7 +1560,7 @@ hb_buffer_has_positions (hb_buffer_t  *buffer)
 hb_glyph_flags_t
 (hb_glyph_info_get_glyph_flags) (const hb_glyph_info_t *info)
 {
-  return hb_glyph_info_get_glyph_flags (info);
+  return hb_glyph_info_get_glyph_flags_macro (info);
 }
 
 /**

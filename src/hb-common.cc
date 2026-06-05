@@ -1183,7 +1183,7 @@ hb_variation_to_string (hb_variation_t *variation,
 uint8_t
 (hb_color_get_alpha) (hb_color_t color)
 {
-  return hb_color_get_alpha (color);
+  return hb_color_get_alpha_macro (color);
 }
 
 /**
@@ -1199,7 +1199,7 @@ uint8_t
 uint8_t
 (hb_color_get_red) (hb_color_t color)
 {
-  return hb_color_get_red (color);
+  return hb_color_get_red_macro (color);
 }
 
 /**
@@ -1215,7 +1215,7 @@ uint8_t
 uint8_t
 (hb_color_get_green) (hb_color_t color)
 {
-  return hb_color_get_green (color);
+  return hb_color_get_green_macro (color);
 }
 
 /**
@@ -1231,7 +1231,7 @@ uint8_t
 uint8_t
 (hb_color_get_blue) (hb_color_t color)
 {
-  return hb_color_get_blue (color);
+  return hb_color_get_blue_macro (color);
 }
 
 
