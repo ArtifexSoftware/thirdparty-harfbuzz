@@ -50,7 +50,7 @@ helper_cairo_create_ft_font_face (const font_options_t *font_opts)
   /* We cannot use the FT_Face from hb_font_t, as doing so will confuse hb_font_t because
    * cairo will reset the face size.  As such, create new face...
    * TODO Perhaps add API to hb-ft to encapsulate this code. */
-  FT_Face ft_face = nullptr;//hb_ft_font_get_face (font);
+  FT_Face ft_face = nullptr;//hb_ft_font_get_ft_face (font);
   if (!ft_face)
   {
     if (!ft_library)
@@ -61,15 +61,11 @@ helper_cairo_create_ft_font_face (const font_options_t *font_opts)
 #endif
     }
 
-    unsigned int blob_length;
-    const char *blob_data = hb_blob_get_data (font_opts->blob, &blob_length);
-
-    if (FT_New_Memory_Face (ft_library,
-			    (const FT_Byte *) blob_data,
-			    blob_length,
-			    font_opts->face_index,
-			    &ft_face))
-      fail (false, "FT_New_Memory_Face fail");
+    if (FT_New_Face (ft_library,
+		     font_opts->font_file,
+		     font_opts->face_index,
+		     &ft_face))
+      fail (false, "FT_New_Face fail");
   }
   if (!ft_face)
   {
