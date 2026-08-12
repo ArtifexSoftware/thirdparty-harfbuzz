@@ -138,6 +138,10 @@
 
      double dmin = 0.0, dmax = 0.0;
      uint32_t varidx = varidx_map->map (i);
+     /* Runtime treats out-of-range delta-set indices as zero. */
+     if (varidx != HB_OT_LAYOUT_NO_VARIATIONS_INDEX &&
+	 !var_store->has_delta_set (varidx))
+       varidx = HB_OT_LAYOUT_NO_VARIATIONS_INDEX;
      if (varidx != HB_OT_LAYOUT_NO_VARIATIONS_INDEX)
      {
        unsigned outer = varidx >> 16;
