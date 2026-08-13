@@ -222,6 +222,11 @@ struct hb_graphite2_cluster_t {
   int advance;
 };
 
+struct hb_graphite2_glyph_t {
+  hb_codepoint_t codepoint;
+  unsigned int cluster;
+};
+
 hb_bool_t
 _hb_graphite2_shape (hb_shape_plan_t    *shape_plan HB_UNUSED,
 		     hb_font_t          *font,
@@ -294,7 +299,7 @@ _hb_graphite2_shape (hb_shape_plan_t    *shape_plan HB_UNUSED,
   (void) buffer->ensure (glyph_count);
   scratch = buffer->get_scratch_buffer (&scratch_size);
   while ((DIV_CEIL (sizeof (hb_graphite2_cluster_t) * buffer->len, sizeof (*scratch)) +
-	  DIV_CEIL (sizeof (hb_codepoint_t) * glyph_count, sizeof (*scratch))) > scratch_size)
+	  DIV_CEIL (sizeof (hb_graphite2_glyph_t) * glyph_count, sizeof (*scratch))) > scratch_size)
   {
     if (unlikely (!buffer->ensure (buffer->allocated * 2)))
     {
@@ -315,13 +320,13 @@ _hb_graphite2_shape (hb_shape_plan_t    *shape_plan HB_UNUSED,
   } while (0)
 
   ALLOCATE_ARRAY (hb_graphite2_cluster_t, clusters, buffer->len);
-  ALLOCATE_ARRAY (hb_codepoint_t, gids, glyph_count);
+  ALLOCATE_ARRAY (hb_graphite2_glyph_t, glyphs, glyph_count);
 
 #undef ALLOCATE_ARRAY
 
   hb_memset (clusters, 0, sizeof (clusters[0]) * buffer->len);
 
-  hb_codepoint_t *pg = gids;
+  hb_graphite2_glyph_t *pg = glyphs;
   clusters[0].cluster = buffer->info[0].cluster;
   unsigned int upem = hb_face_get_upem (face);
   float xscale = (float) font->x_scale / upem;
@@ -339,7 +344,9 @@ _hb_graphite2_shape (hb_shape_plan_t    *shape_plan HB_UNUSED,
   {
     unsigned int before = gr_slot_before (is);
     unsigned int after = gr_slot_after (is);
-    *pg = gr_slot_gid (is);
+    pg->codepoint = gr_slot_gid (is);
+    pg->cluster = hb_min (buffer->info[before].cluster,
+			  buffer->info[after].cluster);
     pg++;
     while (clusters[ci].base_char > before && ci)
     {
@@ -384,21 +391,22 @@ _hb_graphite2_shape (hb_shape_plan_t    *shape_plan HB_UNUSED,
   ci++;
 
   for (unsigned int i = 0; i < ci; ++i)
-    buffer->merge_clusters (clusters[i].base_char,
-			    clusters[i].base_char + clusters[i].num_chars);
-
-  for (unsigned int i = 0; i < ci; ++i)
   {
-    clusters[i].cluster = buffer->info[clusters[i].base_char].cluster;
     for (unsigned int j = 0; j < clusters[i].num_glyphs; ++j)
     {
       hb_glyph_info_t *info = &buffer->info[clusters[i].base_glyph + j];
-      info->codepoint = gids[clusters[i].base_glyph + j];
-      info->cluster = clusters[i].cluster;
+      info->codepoint = glyphs[clusters[i].base_glyph + j].codepoint;
+      info->cluster = HB_BUFFER_CLUSTER_LEVEL_IS_MONOTONE (buffer->cluster_level) ?
+		      glyphs[clusters[i].base_glyph + j].cluster :
+		      clusters[i].cluster;
       info->var1.i32 = clusters[i].advance;     // all glyphs in the cluster get the same advance
     }
   }
   buffer->len = glyph_count;
+
+  for (unsigned int i = 0; i < ci; ++i)
+    buffer->merge_clusters (clusters[i].base_glyph,
+			    clusters[i].base_glyph + clusters[i].num_glyphs);
 
   /* Positioning. */
   unsigned int currclus = UINT_MAX;
