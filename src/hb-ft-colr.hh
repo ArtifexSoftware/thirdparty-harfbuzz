@@ -232,6 +232,7 @@ _hb_ft_color_line_get_color_stops (hb_color_line_t *color_line,
          // FT_Get_Colorline_Stops can in some cases return 0, and
          // does not advance the iterator. So stop iteration to prevent
          // infinite loop here.
+        *count = 0;
         return cl->color_stop_iterator.num_color_stops;
       }
     }
