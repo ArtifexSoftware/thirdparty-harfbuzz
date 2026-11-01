@@ -102,6 +102,17 @@ struct hb_ft_font_t
   FT_Face ft_face;
   mutable hb_atomic_t<unsigned> cached_serial;
   mutable hb_ft_advance_cache_t advance_cache;
+  mutable hb_ft_advance_cache_t v_advance_cache;
+  /* Caches only the vertical origin's y; its x is half the horizontal
+   * advance, taken from advance_cache, as hb-ot does. */
+  mutable hb_ft_advance_cache_t v_origin_cache;
+
+  void clear_caches () const
+  {
+    advance_cache.clear ();
+    v_advance_cache.clear ();
+    v_origin_cache.clear ();
+  }
 };
 
 static hb_ft_font_t *
@@ -120,6 +131,8 @@ _hb_ft_font_create (FT_Face ft_face, bool symbol, bool unref, bool static_librar
 
   ft_font->cached_serial = UINT_MAX;
   new (&ft_font->advance_cache) hb_ft_advance_cache_t;
+  new (&ft_font->v_advance_cache) hb_ft_advance_cache_t;
+  new (&ft_font->v_origin_cache) hb_ft_advance_cache_t;
 
   return ft_font;
 }
@@ -243,7 +256,7 @@ _hb_ft_hb_font_check_changed (hb_font_t *font,
   {
     hb_lock_t lock (ft_font->lock);
     _hb_ft_hb_font_changed (font, ft_font->ft_face);
-    ft_font->advance_cache.clear ();
+    ft_font->clear_caches ();
     ft_font->cached_serial.set_release (font->serial.get_acquire ());
     return true;
   }
@@ -278,6 +291,9 @@ hb_ft_font_set_load_flags (hb_font_t *font, int load_flags)
   hb_ft_font_t *ft_font = (hb_ft_font_t *) font->user_data;
 
   ft_font->load_flags = load_flags;
+  /* The load flags go into both vertical FreeType calls, so any cached
+   * value is now stale; this also refreshes the horizontal advance_cache. */
+  ft_font->clear_caches ();
 }
 
 /**
@@ -553,86 +569,146 @@ hb_ft_get_glyph_h_advances (hb_font_t* font, void* font_data,
 }
 
 #ifndef HB_NO_VERTICAL
-static hb_position_t
-hb_ft_get_glyph_v_advance (hb_font_t *font,
-			   void *font_data,
-			   hb_codepoint_t glyph,
-			   void *user_data HB_UNUSED)
-{
-  const hb_ft_font_t *ft_font = (const hb_ft_font_t *) font_data;
-  _hb_ft_hb_font_check_changed (font, ft_font);
-
-  hb_lock_t lock (ft_font->lock);
-  FT_Fixed v;
-  float y_mult;
-#ifdef HAVE_FT_GET_TRANSFORM
-  if (ft_font->transform)
-  {
-    FT_Matrix matrix;
-    FT_Get_Transform (ft_font->ft_face, &matrix, nullptr);
-    y_mult = sqrtf ((float)matrix.yx * matrix.yx + (float)matrix.yy * matrix.yy) / 65536.f;
-    y_mult *= font->y_scale < 0 ? -1 : +1;
-  }
-  else
-#endif
-  {
-    y_mult = font->y_scale < 0 ? -1 : +1;
-  }
-
-  if (unlikely (FT_Get_Advance (ft_font->ft_face, glyph, ft_font->load_flags | FT_LOAD_VERTICAL_LAYOUT, &v)))
-    return 0;
-
-  /* Note: FreeType's vertical metrics grows downward while other FreeType coordinates
-   * have a Y growing upward.  Hence the extra negation. */
-  double advance = floor ((-(double) v + (1<<9)) / (1<<10));
-
-  return hb_clamp_to<hb_position_t> ((double) y_mult * advance);
-}
-#endif
-
-#ifndef HB_NO_VERTICAL
-static hb_bool_t
-hb_ft_get_glyph_v_origin (hb_font_t *font,
-			  void *font_data,
-			  hb_codepoint_t glyph,
-			  hb_position_t *x,
-			  hb_position_t *y,
-			  void *user_data HB_UNUSED)
+static void
+hb_ft_get_glyph_v_advances (hb_font_t* font, void* font_data,
+			    unsigned count,
+			    const hb_codepoint_t *first_glyph,
+			    unsigned glyph_stride,
+			    hb_position_t *first_advance,
+			    unsigned advance_stride,
+			    void *user_data HB_UNUSED)
 {
   const hb_ft_font_t *ft_font = (const hb_ft_font_t *) font_data;
   _hb_ft_hb_font_check_changed (font, ft_font);
 
   hb_lock_t lock (ft_font->lock);
   FT_Face ft_face = ft_font->ft_face;
-  float x_mult, y_mult;
+  int load_flags = ft_font->load_flags | FT_LOAD_VERTICAL_LAYOUT;
+  bool negative = font->y_scale < 0;
+  float y_mult;
 #ifdef HAVE_FT_GET_TRANSFORM
   if (ft_font->transform)
   {
     FT_Matrix matrix;
     FT_Get_Transform (ft_face, &matrix, nullptr);
-    x_mult = sqrtf ((float)matrix.xx * matrix.xx + (float)matrix.xy * matrix.xy) / 65536.f;
-    x_mult *= font->x_scale < 0 ? -1 : +1;
     y_mult = sqrtf ((float)matrix.yx * matrix.yx + (float)matrix.yy * matrix.yy) / 65536.f;
-    y_mult *= font->y_scale < 0 ? -1 : +1;
+    y_mult *= negative ? -1 : +1;
   }
   else
 #endif
   {
-    x_mult = font->x_scale < 0 ? -1 : +1;
-    y_mult = font->y_scale < 0 ? -1 : +1;
+    y_mult = negative ? -1 : +1;
   }
 
-  if (unlikely (FT_Load_Glyph (ft_face, glyph, ft_font->load_flags)))
-    return false;
+  for (unsigned int i = 0; i < count; i++)
+  {
+    hb_position_t advance;
+    hb_codepoint_t glyph = *first_glyph;
 
-  /* Note: FreeType's vertical metrics grows downward while other FreeType coordinates
-   * have a Y growing upward.  Hence the extra negation. */
-  *x = hb_clamp_to<hb_position_t> ((double) x_mult *
-				   ((double) ft_face->glyph->metrics.horiBearingX -
-				    ft_face->glyph->metrics.vertBearingX));
-  *y = hb_clamp_to<hb_position_t> ((double) y_mult *
-				   ((double) ft_face->glyph->metrics.horiBearingY +
-				    ft_face->glyph->metrics.vertBearingY));
+    unsigned int cv;
+    if (ft_font->v_advance_cache.get (glyph, &cv))
+      /* hb_cache_t stores an unsigned value, so we cached the non-negative
+       * magnitude; restore the sign for this font's y_scale. */
+      advance = negative ? (hb_position_t) cv : -(hb_position_t) cv;
+    else
+    {
+      FT_Fixed v = 0;
+      /* Without vmtx this loads the whole glyph; a failed load leaves v at 0. */
+      FT_Get_Advance (ft_face, glyph, load_flags, &v);
+      /* Note: FreeType's vertical metrics grow downward while other FreeType
+       * coordinates have a Y growing upward.  Hence the extra negation. */
+      double scaled = floor ((-(double) v + (1<<9)) / (1<<10));
+      advance = hb_clamp_to<hb_position_t> ((double) y_mult * scaled);
+      /* The advance is <= 0 for y_scale >= 0, which hb_cache_t cannot hold;
+       * cache its non-negative magnitude.  Failures (advance 0) cache too. */
+      ft_font->v_advance_cache.set (glyph, negative ? advance : -advance);
+    }
+
+    *first_advance = advance;
+    first_glyph = &StructAtOffsetUnaligned<hb_codepoint_t> (first_glyph, glyph_stride);
+    first_advance = &StructAtOffsetUnaligned<hb_position_t> (first_advance, advance_stride);
+  }
+}
+#endif
+
+#ifndef HB_NO_VERTICAL
+static hb_bool_t
+hb_ft_get_glyph_v_origins (hb_font_t *font,
+			   void *font_data,
+			   unsigned count,
+			   const hb_codepoint_t *first_glyph,
+			   unsigned glyph_stride,
+			   hb_position_t *first_x,
+			   unsigned x_stride,
+			   hb_position_t *first_y,
+			   unsigned y_stride,
+			   void *user_data HB_UNUSED)
+{
+  const hb_ft_font_t *ft_font = (const hb_ft_font_t *) font_data;
+  _hb_ft_hb_font_check_changed (font, ft_font);
+
+  /* The origin's x is half the horizontal advance, as hb-ot does.  Fill it
+   * before taking the lock, since hb_ft_get_glyph_h_advances() takes it too.
+   * Call it directly rather than through font->get_glyph_h_advances(), so the
+   * advance is not emboldened (the v_origins font-funcs wrapper does that). */
+  hb_ft_get_glyph_h_advances (font, font_data, count,
+			      first_glyph, glyph_stride,
+			      first_x, x_stride, nullptr);
+  {
+    hb_position_t *x = first_x;
+    for (unsigned int i = 0; i < count; i++)
+    {
+      *x /= 2;
+      x = &StructAtOffsetUnaligned<hb_position_t> (x, x_stride);
+    }
+  }
+
+  hb_lock_t lock (ft_font->lock);
+  FT_Face ft_face = ft_font->ft_face;
+  bool negative = font->y_scale < 0;
+  float y_mult;
+#ifdef HAVE_FT_GET_TRANSFORM
+  if (ft_font->transform)
+  {
+    FT_Matrix matrix;
+    FT_Get_Transform (ft_face, &matrix, nullptr);
+    y_mult = sqrtf ((float)matrix.yx * matrix.yx + (float)matrix.yy * matrix.yy) / 65536.f;
+    y_mult *= negative ? -1 : +1;
+  }
+  else
+#endif
+  {
+    y_mult = negative ? -1 : +1;
+  }
+
+  for (unsigned int i = 0; i < count; i++)
+  {
+    hb_codepoint_t glyph = *first_glyph;
+    hb_position_t y;
+
+    unsigned int cv;
+    if (ft_font->v_origin_cache.get (glyph, &cv))
+      /* hb_cache_t stores an unsigned value; the origin's y is normalized to a
+       * non-negative magnitude (like hb-ot), so restore the sign here. */
+      y = negative ? -(hb_position_t) cv : (hb_position_t) cv;
+    else
+    {
+      /* A failed load is ignored: the glyph won't render, so cache a 0 origin
+       * for it (not reloaded on repeat) and keep serving the rest of the run. */
+      if (unlikely (FT_Load_Glyph (ft_face, glyph, ft_font->load_flags)))
+	y = 0;
+      else
+	y = hb_clamp_to<hb_position_t> ((double) y_mult *
+					((double) ft_face->glyph->metrics.horiBearingY +
+					 ft_face->glyph->metrics.vertBearingY));
+      ft_font->v_origin_cache.set (glyph, negative ? -y : y);
+    }
+
+    *first_y = y;
+
+    first_glyph = &StructAtOffsetUnaligned<hb_codepoint_t> (first_glyph, glyph_stride);
+    first_y = &StructAtOffsetUnaligned<hb_position_t> (first_y, y_stride);
+  }
 
   return true;
 }
@@ -1080,8 +1156,8 @@ static struct hb_ft_font_funcs_lazy_loader_t : hb_font_funcs_lazy_loader_t<hb_ft
     hb_font_funcs_set_glyph_h_advances_func (funcs, hb_ft_get_glyph_h_advances, nullptr, nullptr);
 
 #ifndef HB_NO_VERTICAL
-    hb_font_funcs_set_glyph_v_advance_func (funcs, hb_ft_get_glyph_v_advance, nullptr, nullptr);
-    hb_font_funcs_set_glyph_v_origin_func (funcs, hb_ft_get_glyph_v_origin, nullptr, nullptr);
+    hb_font_funcs_set_glyph_v_advances_func (funcs, hb_ft_get_glyph_v_advances, nullptr, nullptr);
+    hb_font_funcs_set_glyph_v_origins_func (funcs, hb_ft_get_glyph_v_origins, nullptr, nullptr);
 #endif
 
 #ifndef HB_NO_OT_SHAPE_FALLBACK
@@ -1473,7 +1549,7 @@ hb_ft_font_changed (hb_font_t *font)
   }
 #endif
 
-  ft_font->advance_cache.clear ();
+  ft_font->clear_caches ();
   ft_font->cached_serial = font->serial;
 }
 
@@ -1841,6 +1917,12 @@ hb_ft_face_create_from_blob_or_fail (hb_blob_t    *blob,
 void
 hb_ft_font_set_funcs (hb_font_t *font)
 {
+  /* hb_font_set_funcs() is a no-op on an immutable font and destroys the
+   * hb_ft_font_t (and the FT_Face) handed to it; bail out early so we
+   * don't create a face only to use it after it has been freed. */
+  if (hb_object_is_immutable (font))
+    return;
+
   int load_flags = FT_LOAD_DEFAULT | FT_LOAD_NO_HINTING;
   if (font->destroy == (hb_destroy_func_t) _hb_ft_font_destroy && font->user_data)
   {
