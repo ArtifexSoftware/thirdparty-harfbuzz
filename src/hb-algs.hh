@@ -1222,12 +1222,16 @@ static inline unsigned int DIV_CEIL (const unsigned int a, unsigned int b)
 { return (a + (b - 1)) / b; }
 
 
+/* ARRAY_LENGTH (array) converts implicitly to size_t.
+ * decltype (ARRAY_LENGTH (array))::value extracts the length without evaluating
+ * array, so it is a constant expression even for reference parameters. */
 #undef  ARRAY_LENGTH
-template <typename Type, unsigned int n>
-static inline unsigned int ARRAY_LENGTH (const Type (&)[n]) { return n; }
-/* A const version, but does not detect erratically being called on pointers. */
-#define ARRAY_LENGTH_CONST(__array) ((signed int) (sizeof (__array) / sizeof (__array[0])))
-
+struct
+{
+  template <typename Type, size_t n> constexpr std::integral_constant<size_t, n>
+  operator () (const Type (&)[n]) const { return {}; }
+}
+HB_FUNCOBJ (ARRAY_LENGTH);
 
 static inline void *
 hb_memcpy (void *__restrict dst, const void *__restrict src, size_t len)
