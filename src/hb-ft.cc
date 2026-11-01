@@ -88,58 +88,6 @@
 
 using hb_ft_advance_cache_t = hb_cache_t<16, 24, 8, false>;
 
-/* Direct-mapped per-glyph cache for vertical glyph origins, which FreeType has
- * to load (for CFF: interpret) the whole glyph for.  An origin is two values
- * plus a failure flag, so hb_cache_t does not fit; this holds the wider value,
- * failures included, so that a glyph that is slow for FreeType to load is not
- * loaded again for every occurrence in the text.  Only accessed under
- * hb_ft_font_t::lock. */
-template <typename T>
-struct hb_ft_glyph_cache_t
-{
-  hb_ft_glyph_cache_t () { clear (); }
-
-  void clear ()
-  {
-    for (auto &item : items)
-      item.glyph = HB_CODEPOINT_INVALID;
-  }
-
-  bool get (hb_codepoint_t glyph, T *value) const
-  {
-    const item_t &item = items[glyph & (ARRAY_LENGTH (items) - 1)];
-    if (item.glyph != glyph || glyph == HB_CODEPOINT_INVALID)
-      return false;
-    *value = item.value;
-    return true;
-  }
-
-  void set (hb_codepoint_t glyph, const T &value)
-  {
-    if (unlikely (glyph == HB_CODEPOINT_INVALID))
-      return;
-    item_t &item = items[glyph & (ARRAY_LENGTH (items) - 1)];
-    item.glyph = glyph;
-    item.value = value;
-  }
-
-  private:
-  struct item_t
-  {
-    hb_codepoint_t glyph;
-    T value;
-  };
-  item_t items[256];
-};
-
-struct hb_ft_v_origin_t
-{
-  bool found; /* Whether FT_Load_Glyph() succeeded. */
-  hb_position_t x, y;
-};
-
-using hb_ft_v_origin_cache_t = hb_ft_glyph_cache_t<hb_ft_v_origin_t>;
-
 static void _hb_ft_face_destroy_static (void *data);
 
 struct hb_ft_font_t
@@ -155,7 +103,9 @@ struct hb_ft_font_t
   mutable hb_atomic_t<unsigned> cached_serial;
   mutable hb_ft_advance_cache_t advance_cache;
   mutable hb_ft_advance_cache_t v_advance_cache;
-  mutable hb_ft_v_origin_cache_t v_origin_cache;
+  /* Caches only the vertical origin's y; its x is half the horizontal
+   * advance, taken from advance_cache, as hb-ot does. */
+  mutable hb_ft_advance_cache_t v_origin_cache;
 
   void clear_caches () const
   {
@@ -182,7 +132,7 @@ _hb_ft_font_create (FT_Face ft_face, bool symbol, bool unref, bool static_librar
   ft_font->cached_serial = UINT_MAX;
   new (&ft_font->advance_cache) hb_ft_advance_cache_t;
   new (&ft_font->v_advance_cache) hb_ft_advance_cache_t;
-  new (&ft_font->v_origin_cache) hb_ft_v_origin_cache_t;
+  new (&ft_font->v_origin_cache) hb_ft_advance_cache_t;
 
   return ft_font;
 }
@@ -697,73 +647,70 @@ hb_ft_get_glyph_v_origins (hb_font_t *font,
   const hb_ft_font_t *ft_font = (const hb_ft_font_t *) font_data;
   _hb_ft_hb_font_check_changed (font, ft_font);
 
+  /* The origin's x is half the horizontal advance, as hb-ot does.  Fill it
+   * before taking the lock, since hb_ft_get_glyph_h_advances() takes it too.
+   * Call it directly rather than through font->get_glyph_h_advances(), so the
+   * advance is not emboldened (the v_origins font-funcs wrapper does that). */
+  hb_ft_get_glyph_h_advances (font, font_data, count,
+			      first_glyph, glyph_stride,
+			      first_x, x_stride, nullptr);
+  {
+    hb_position_t *x = first_x;
+    for (unsigned int i = 0; i < count; i++)
+    {
+      *x /= 2;
+      x = &StructAtOffsetUnaligned<hb_position_t> (x, x_stride);
+    }
+  }
+
   hb_lock_t lock (ft_font->lock);
   FT_Face ft_face = ft_font->ft_face;
-  float x_mult, y_mult;
+  bool negative = font->y_scale < 0;
+  float y_mult;
 #ifdef HAVE_FT_GET_TRANSFORM
   if (ft_font->transform)
   {
     FT_Matrix matrix;
     FT_Get_Transform (ft_face, &matrix, nullptr);
-    x_mult = sqrtf ((float)matrix.xx * matrix.xx + (float)matrix.xy * matrix.xy) / 65536.f;
-    x_mult *= font->x_scale < 0 ? -1 : +1;
     y_mult = sqrtf ((float)matrix.yx * matrix.yx + (float)matrix.yy * matrix.yy) / 65536.f;
-    y_mult *= font->y_scale < 0 ? -1 : +1;
+    y_mult *= negative ? -1 : +1;
   }
   else
 #endif
   {
-    x_mult = font->x_scale < 0 ? -1 : +1;
-    y_mult = font->y_scale < 0 ? -1 : +1;
+    y_mult = negative ? -1 : +1;
   }
 
-  /* As the non-batched callback did, report a glyph whose FreeType load fails
-   * as not-found.  The caller then applies its fallback to the whole run. */
-  hb_bool_t ret = true;
   for (unsigned int i = 0; i < count; i++)
   {
     hb_codepoint_t glyph = *first_glyph;
-    hb_position_t x = 0, y = 0;
+    hb_position_t y;
 
-    hb_ft_v_origin_t cached;
-    if (ft_font->v_origin_cache.get (glyph, &cached))
-    {
-      if (unlikely (!cached.found))
-	ret = false;
-      else
-      {
-	x = cached.x;
-	y = cached.y;
-      }
-    }
-    else if (unlikely (FT_Load_Glyph (ft_face, glyph, ft_font->load_flags)))
-    {
-      /* Cache the failure too. */
-      ft_font->v_origin_cache.set (glyph, {false, 0, 0});
-      ret = false;
-    }
+    unsigned int cv;
+    if (ft_font->v_origin_cache.get (glyph, &cv))
+      /* hb_cache_t stores an unsigned value; the origin's y is normalized to a
+       * non-negative magnitude (like hb-ot), so restore the sign here. */
+      y = negative ? -(hb_position_t) cv : (hb_position_t) cv;
     else
     {
-      /* Note: FreeType's vertical metrics grow downward while other FreeType
-       * coordinates have a Y growing upward.  Hence the extra negation. */
-      x = hb_clamp_to<hb_position_t> ((double) x_mult *
-				      ((double) ft_face->glyph->metrics.horiBearingX -
-				       ft_face->glyph->metrics.vertBearingX));
-      y = hb_clamp_to<hb_position_t> ((double) y_mult *
-				      ((double) ft_face->glyph->metrics.horiBearingY +
-				       ft_face->glyph->metrics.vertBearingY));
-      ft_font->v_origin_cache.set (glyph, {true, x, y});
+      /* A failed load is ignored: the glyph won't render, so cache a 0 origin
+       * for it (not reloaded on repeat) and keep serving the rest of the run. */
+      if (unlikely (FT_Load_Glyph (ft_face, glyph, ft_font->load_flags)))
+	y = 0;
+      else
+	y = hb_clamp_to<hb_position_t> ((double) y_mult *
+					((double) ft_face->glyph->metrics.horiBearingY +
+					 ft_face->glyph->metrics.vertBearingY));
+      ft_font->v_origin_cache.set (glyph, negative ? -y : y);
     }
 
-    *first_x = x;
     *first_y = y;
 
     first_glyph = &StructAtOffsetUnaligned<hb_codepoint_t> (first_glyph, glyph_stride);
-    first_x = &StructAtOffsetUnaligned<hb_position_t> (first_x, x_stride);
     first_y = &StructAtOffsetUnaligned<hb_position_t> (first_y, y_stride);
   }
 
-  return ret;
+  return true;
 }
 #endif
 

@@ -734,6 +734,8 @@ test_native_ft_v_metrics_batched (void)
       g_assert_true (hb_font_get_glyph_v_origin (fresh, glyphs[i], &ox, &oy));
       g_assert_cmpint (org[i].x, ==, ox);
       g_assert_cmpint (org[i].y, ==, oy);
+      /* The origin's x is half the horizontal advance, as hb-ot does. */
+      g_assert_cmpint (org[i].x, ==, hb_font_get_glyph_h_advance (fresh, glyphs[i]) / 2);
     }
     hb_font_destroy (fresh);
   }
