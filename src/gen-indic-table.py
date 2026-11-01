@@ -43,6 +43,8 @@ ALLOWED_BLOCKS = [
 	'Myanmar Extended-B',
 	'Myanmar Extended-A',
 	'Myanmar Extended-C',
+	'Devanagari Extended-A',
+	'Bengali Supplement',
 ]
 
 files = [open (x, encoding='utf-8') for x in sys.argv[1:]]
