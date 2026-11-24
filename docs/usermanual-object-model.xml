@@ -317,6 +317,26 @@ hb_ot_layout_table_get_script_tags(face, HB_OT_TAG_GSUB, 0, &amp;count, tags);
       a piece at a time, adding the count that comes back
       to <literal>start_offset</literal> until it reaches the total.
     </para>
+<programlisting language="C">
+hb_tag_t tags[32];
+unsigned int offset = 0;
+unsigned int total;
+
+do
+{
+  unsigned int count = sizeof(tags) / sizeof(tags[0]);
+  total = hb_ot_layout_table_get_script_tags(face, HB_OT_TAG_GSUB, offset, &amp;count, tags);
+  for (unsigned int i = 0; i &lt; count; i++)
+    use_script_tag(tags[i]);
+  offset += count;
+}
+while (offset &lt; total);
+</programlisting>
+    <para>
+      Each call sets <literal>count</literal> to the capacity of the
+      array before it is passed, since it comes back as the number of
+      items written.
+    </para>
     <para>
       The array may be <literal>NULL</literal> only if the count
       is <literal>NULL</literal> or zero.  A non-zero count with no
