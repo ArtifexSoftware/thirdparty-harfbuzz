@@ -1638,6 +1638,9 @@ hb_font_draw_glyph_or_fail (hb_font_t *font,
 			    hb_codepoint_t glyph,
 			    hb_draw_funcs_t *dfuncs, void *draw_data)
 {
+  /* Whatever draws the glyph is owed draw functions.  Hand it the empty
+   * ones, which draw nothing, for none. */
+  if (unlikely (!dfuncs)) dfuncs = hb_draw_funcs_get_empty ();
   return font->draw_glyph_or_fail (glyph, dfuncs, draw_data);
 }
 
@@ -1678,6 +1681,9 @@ hb_font_paint_glyph_or_fail (hb_font_t *font,
 			     unsigned int palette_index,
 			     hb_color_t foreground)
 {
+  /* Whatever paints the glyph is owed paint functions.  Hand it the
+   * empty ones, which paint nothing, for none. */
+  if (unlikely (!pfuncs)) pfuncs = hb_paint_funcs_get_empty ();
   return font->paint_glyph_or_fail (glyph, pfuncs, paint_data, palette_index, foreground);
 }
 
@@ -1755,6 +1761,8 @@ hb_font_paint_glyph (hb_font_t *font,
                      unsigned int palette_index,
                      hb_color_t foreground)
 {
+  /* As in hb_font_paint_glyph_or_fail(). */
+  if (unlikely (!pfuncs)) pfuncs = hb_paint_funcs_get_empty ();
   font->paint_glyph (glyph, pfuncs, paint_data, palette_index, foreground);
 }
 
